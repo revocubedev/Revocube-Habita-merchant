@@ -1,0 +1,25 @@
+# Environment variables
+.env
+.env.local
+
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Extraction data (large JSON files)
+extracted-data/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
