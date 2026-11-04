@@ -65,7 +65,7 @@ export const useDeleteNotice = (id?: string) => {
       method: "DELETE",
       isAuth: true,
       isCode: true,
-      successMessage: "Notice deleted successfully",
+      // successMessage: "Notice deleted successfully",
     });
 
   const deleteNotice = () => callApi(undefined);
