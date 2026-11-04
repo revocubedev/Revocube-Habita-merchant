@@ -1,15 +1,16 @@
+
 import { useState, useEffect } from 'react';
-import { MoreHorizontal, FileSpreadsheet, Filter, FileText, ChevronDown, Edit, Trash2, Eye } from 'lucide-react';
+import { FileSpreadsheet, Filter, FileText, ChevronDown, Edit, Trash2, Eye } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import { CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
 import { mockInvoices } from '@/lib/mockData';
 
 const Invoices = () => {
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showRowMenu, setShowRowMenu] = useState<string | null>(null);
   const [visibleColumns, setVisibleColumns] = useState(['Invoice', 'Invoice Type', 'Property', 'Unit']);
   const [propertyFilter, setPropertyFilter] = useState('All');
   const [unitFilter, setUnitFilter] = useState('All');
@@ -46,10 +47,9 @@ const Invoices = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.column-menu-container') && !target.closest('.export-menu-container') && !target.closest('.row-menu-container') && !target.closest('.filter-panel-container')) {
+      if (!target.closest('.column-menu-container') && !target.closest('.export-menu-container') && !target.closest('.filter-panel-container')) {
         setShowColumnMenu(false);
         setShowExportMenu(false);
-        setShowRowMenu(null);
         setShowFilterPanel(false);
       }
     };
@@ -215,29 +215,25 @@ const Invoices = () => {
                         </span>
                       </TableCell>
                     )}
-                    <TableCell className="text-right relative row-menu-container">
-                      <button
-                        onClick={() => setShowRowMenu(showRowMenu === invoice.id ? null : invoice.id)}
-                        className="p-1 hover:bg-muted rounded"
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
-                      {showRowMenu === invoice.id && (
-                        <div className="absolute right-0 top-full mt-1 w-32 bg-card border border-border rounded-lg shadow-lg p-1 z-10" style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}>
-                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2">
-                            <Eye className="w-4 h-4" />
-                            View
-                          </button>
-                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2">
-                            <Edit className="w-4 h-4" />
-                            Edit
-                          </button>
-                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2 text-brand-text" style={{ color: '#f30100' }}>
-                            <Trash2 className="w-4 h-4" />
-                            Delete
-                          </button>
-                        </div>
-                      )}
+                    <TableCell className="text-right">
+                      <RowActionsMenu>
+                        {(close) => (
+                          <>
+                            <RowAction onClick={() => { close(); }}>
+                              <Eye className="w-4 h-4" />
+                              View
+                            </RowAction>
+                            <RowAction onClick={() => { close(); }}>
+                              <Edit className="w-4 h-4" />
+                              Edit
+                            </RowAction>
+                            <RowAction danger onClick={() => { close(); }}>
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </RowAction>
+                          </>
+                        )}
+                      </RowActionsMenu>
                     </TableCell>
                   </TableRow>
                 ))}

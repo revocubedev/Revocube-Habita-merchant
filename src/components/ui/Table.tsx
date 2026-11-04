@@ -7,7 +7,8 @@ interface TableProps {
 
 const Table = ({ children, className }: TableProps) => {
   return (
-    <div className="w-full overflow-auto">
+    // Horizontal scroll only: rows are never cut off vertically, extra rows go to pagination.
+    <div className="w-full overflow-x-auto">
       <table className={cn('w-full text-sm', className)}>
         {children}
       </table>
@@ -47,9 +48,9 @@ const TableHead = ({ children, className }: TableProps) => {
   );
 };
 
-const TableCell = ({ children, className }: TableProps) => {
+const TableCell = ({ children, className, colSpan }: TableProps & { colSpan?: number }) => {
   return (
-    <td className={cn('p-4 align-middle [&:has([role=checkbox])]:pr-0', className)}>
+    <td colSpan={colSpan} className={cn('p-4 align-middle [&:has([role=checkbox])]:pr-0', className)}>
       {children}
     </td>
   );

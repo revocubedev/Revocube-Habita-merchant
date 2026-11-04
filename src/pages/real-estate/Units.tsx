@@ -1,15 +1,16 @@
+
 import { useState, useEffect } from 'react';
-import { Search, MoreHorizontal, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2 } from 'lucide-react';
+import { Search, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import { CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
 import { mockUnits } from '@/lib/mockData';
 
 const Units = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showRowMenu, setShowRowMenu] = useState<string | null>(null);
   const [visibleColumns, setVisibleColumns] = useState(['Unit', 'Rent Type', 'Rent', 'Rent Duration']);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -38,10 +39,9 @@ const Units = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.column-menu-container') && !target.closest('.export-menu-container') && !target.closest('.row-menu-container')) {
+      if (!target.closest('.column-menu-container') && !target.closest('.export-menu-container')) {
         setShowColumnMenu(false);
         setShowExportMenu(false);
-        setShowRowMenu(null);
       }
     };
 
@@ -195,25 +195,21 @@ const Units = () => {
                   {visibleColumns.includes('Member') && (
                     <TableCell className="text-muted-foreground">{unit.member}</TableCell>
                   )}
-                  <TableCell className="text-right relative row-menu-container">
-                    <button
-                      onClick={() => setShowRowMenu(showRowMenu === unit.id ? null : unit.id)}
-                      className="p-1 hover:bg-muted rounded"
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                    {showRowMenu === unit.id && (
-                      <div className="absolute right-0 top-full mt-1 w-32 bg-card border border-border rounded-lg shadow-lg p-1 z-10" style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}>
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2">
-                          <Edit className="w-4 h-4" />
-                          Edit
-                        </button>
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2 text-brand-text" style={{ color: '#f30100' }}>
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </button>
-                      </div>
-                    )}
+                  <TableCell className="text-right">
+                    <RowActionsMenu>
+                      {(close) => (
+                        <>
+                          <RowAction onClick={() => { close(); }}>
+                            <Edit className="w-4 h-4" />
+                            Edit
+                          </RowAction>
+                          <RowAction danger onClick={() => { close(); }}>
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </RowAction>
+                        </>
+                      )}
+                    </RowActionsMenu>
                   </TableCell>
                 </TableRow>
               ))}
