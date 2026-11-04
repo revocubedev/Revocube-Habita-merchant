@@ -15,6 +15,21 @@ export const useCreateNotice = () => {
 
   return { createNotice, isLoading, data, response, error, isSuccess };
 };
+export const useUpdateNotice = (id?: string) => {
+  const { callApi, isLoading, data, response, error, isSuccess } =
+    useApiManager({
+      endpoint: `notices/${id}`,
+      queryKey: ["get_notice"],
+      method: "PATCH",
+      isAuth: true,
+      isCode: true,
+      // successMessage: "Notice updated successfully",
+    });
+
+  const updateNotice = (details: any) => callApi(details);
+
+  return { updateNotice, isLoading, data, response, error, isSuccess };
+};
 
 export const useGetNoticeCall = ({
   enabled = true,
@@ -39,4 +54,21 @@ export const useGetNoticeCall = ({
       ...(search !== undefined && search !== "" && { search }),
     },
   });
+};
+
+
+export const useDeleteNotice = (id?: string) => {
+  const { callApi, isLoading, data, response, error, isSuccess } =
+    useApiManager({
+      endpoint: `notices/${id}`,
+      queryKey: ["get_notice"],
+      method: "DELETE",
+      isAuth: true,
+      isCode: true,
+      successMessage: "Notice deleted successfully",
+    });
+
+  const deleteNotice = () => callApi(undefined);
+
+  return { deleteNotice, isLoading, data, response, error, isSuccess };
 };
