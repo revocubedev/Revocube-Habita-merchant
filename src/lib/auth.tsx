@@ -1,23 +1,26 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
 import type { AuthContextType, User } from '@/types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const readStoredUser = (): User | null => {
+  const token = localStorage.getItem('token');
+  const storedUser = localStorage.getItem('user');
+  if (!token || !storedUser) return null;
+  try {
+    return JSON.parse(storedUser);
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    // Check for existing token in localStorage
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (token && storedUser) {
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
-    }
-  }, []);
+  // Read the saved session synchronously so a page reload doesn't
+  // render signed-out (and redirect to /login) before it's restored.
+  const [user, setUser] = useState<User | null>(readStoredUser);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!readStoredUser());
 
   const login = (token: string, userData: User) => {
     localStorage.setItem('token', token);
