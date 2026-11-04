@@ -1,15 +1,16 @@
+
 import { useState, useEffect } from 'react';
-import { Search, MoreHorizontal, FileSpreadsheet, ChevronDown, Eye } from 'lucide-react';
+import { Search, FileSpreadsheet, ChevronDown, Eye } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import { CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
 import { mockVisitors } from '@/lib/mockData';
 
 const GuestVerification = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showRowMenu, setShowRowMenu] = useState<string | null>(null);
   const [visibleColumns, setVisibleColumns] = useState(['Code', 'Visitor', 'Check In', 'Check Out', 'Status', 'Actions']);
   const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,10 +41,9 @@ const GuestVerification = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.column-menu-container') && !target.closest('.export-menu-container') && !target.closest('.row-menu-container')) {
+      if (!target.closest('.column-menu-container') && !target.closest('.export-menu-container')) {
         setShowColumnMenu(false);
         setShowExportMenu(false);
-        setShowRowMenu(null);
       }
     };
 
@@ -213,21 +213,15 @@ const GuestVerification = () => {
                       </span>
                     </TableCell>
                   )}
-                  <TableCell className="text-right relative row-menu-container">
-                    <button
-                      onClick={() => setShowRowMenu(showRowMenu === visitor.id ? null : visitor.id)}
-                      className="p-1 hover:bg-muted rounded"
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                    {showRowMenu === visitor.id && (
-                      <div className="absolute right-0 top-full mt-1 w-32 bg-card border border-border rounded-lg shadow-lg p-1 z-10" style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}>
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2">
+                  <TableCell className="text-right">
+                    <RowActionsMenu>
+                      {(close) => (
+                        <RowAction onClick={() => { close(); }}>
                           <Eye className="w-4 h-4" />
                           View details
-                        </button>
-                      </div>
-                    )}
+                        </RowAction>
+                      )}
+                    </RowActionsMenu>
                   </TableCell>
                 </TableRow>
               ))}

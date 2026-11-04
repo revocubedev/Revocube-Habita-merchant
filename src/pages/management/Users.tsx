@@ -1,16 +1,17 @@
+
 import { useState } from 'react';
-import { Search, MoreHorizontal, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2 } from 'lucide-react';
+import { Search, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import { CardContent } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
 import { mockUsers } from '@/lib/mockData';
 
 const Users = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showRowMenu, setShowRowMenu] = useState<string | null>(null);
   const [visibleColumns, setVisibleColumns] = useState(['User', 'Email', 'Phone Number']);
 
   const filteredUsers = mockUsers.filter((user) =>
@@ -166,25 +167,21 @@ const Users = () => {
                       </span>
                     </TableCell>
                   )}
-                  <TableCell className="text-right relative">
-                    <button
-                      onClick={() => setShowRowMenu(showRowMenu === user.id ? null : user.id)}
-                      className="p-1 hover:bg-muted rounded"
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                    {showRowMenu === user.id && (
-                      <div className="absolute right-0 top-full mt-1 w-32 bg-card border border-border rounded-lg shadow-lg p-1 z-10" style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}>
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2">
-                          <Edit className="w-4 h-4" />
-                          Edit
-                        </button>
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2 text-brand-text" style={{ color: '#f30100' }}>
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </button>
-                      </div>
-                    )}
+                  <TableCell className="text-right">
+                    <RowActionsMenu>
+                      {(close) => (
+                        <>
+                          <RowAction onClick={() => { close(); }}>
+                            <Edit className="w-4 h-4" />
+                            Edit
+                          </RowAction>
+                          <RowAction danger onClick={() => { close(); }}>
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </RowAction>
+                        </>
+                      )}
+                    </RowActionsMenu>
                   </TableCell>
                 </TableRow>
               ))}

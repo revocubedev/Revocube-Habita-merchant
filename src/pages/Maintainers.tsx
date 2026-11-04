@@ -1,44 +1,77 @@
 import { useState, useEffect } from 'react';
-import { Search, MoreHorizontal, FileSpreadsheet, ChevronDown, Edit, Trash2 } from 'lucide-react';
+import { Search, FileSpreadsheet, ChevronDown, Edit, Trash2 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import { CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import { mockMaintainers } from '@/lib/mockData';
+import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
+import {
+  useGetMaintainers,
+  useDeleteMaintainer,
+  type Maintainer,
+} from '@/api/api_controllers/maintainerController';
+import MaintainerFormModal from '@/components/maintainers/MaintainerFormModal';
+
+const formatDate = (v?: string) => {
+  if (!v) return '';
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? v : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const DeleteMaintainerButton = ({ id, onClose }: { id: string; onClose: () => void }) => {
+  const { deleteMaintainer, isLoading } = useDeleteMaintainer(id);
+  return (
+    <RowAction
+      danger
+      disabled={isLoading}
+      onClick={async () => {
+        if (!window.confirm('Delete this maintainer?')) return;
+        onClose();
+        try { await deleteMaintainer(); } catch { /* toast shown */ }
+      }}
+    >
+      <Trash2 className="w-4 h-4" />
+      {isLoading ? 'Deleting...' : 'Delete'}
+    </RowAction>
+  );
+};
 
 const Maintainers = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showColumnMenu, setShowColumnMenu] = useState(false);
-  const [showRowMenu, setShowRowMenu] = useState<string | null>(null);
   const [visibleColumns, setVisibleColumns] = useState(['Maintainer', 'Email Address', 'User', 'Creation Date', 'Type', 'Actions']);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const filteredMaintainers = mockMaintainers.filter((maintainer) =>
-    maintainer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    maintainer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    maintainer.user.toLowerCase().includes(searchQuery.toLowerCase())
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Maintainer | null>(null);
+
+  const { data, isLoading, isError, error } = useGetMaintainers({ page: currentPage, perPage: pageSize });
+  const maintainers: Maintainer[] = Array.isArray(data?.data) ? data.data : [];
+  const meta = data?.meta;
+
+  const q = searchQuery.toLowerCase();
+  const currentMaintainers = maintainers.filter((m) =>
+    `${m.firstName} ${m.lastName}`.toLowerCase().includes(q) ||
+    m.email?.toLowerCase().includes(q) ||
+    m.phoneNumber?.includes(q)
   );
 
   const columns = [
     { id: 'Maintainer', label: 'Maintainer' },
     { id: 'Email Address', label: 'Email Address' },
-    { id: 'User', label: 'User' },
+    { id: 'User', label: 'Phone Number' },
     { id: 'Creation Date', label: 'Creation Date' },
     { id: 'Type', label: 'Type' },
     { id: 'Actions', label: 'Actions' },
   ];
 
-  const totalPages = Math.ceil(filteredMaintainers.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const currentMaintainers = filteredMaintainers.slice(startIndex, endIndex);
+  const totalPages = Math.max(1, meta?.totalPages ?? 1);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.column-menu-container') && !target.closest('.row-menu-container')) {
+      if (!target.closest('.column-menu-container')) {
         setShowColumnMenu(false);
-        setShowRowMenu(null);
       }
     };
 
@@ -54,6 +87,7 @@ const Maintainers = () => {
           Maintainers List
         </h2>
         <button
+          onClick={() => { setEditing(null); setModalOpen(true); }}
           className="text-sm text-white transition-colors flex items-center gap-2 px-4 py-2"
           style={{ 
             fontFamily: 'Poppins', 
@@ -135,45 +169,51 @@ const Maintainers = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentMaintainers.map((maintainer) => (
+              {(isLoading || isError || currentMaintainers.length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={visibleColumns.length} className="text-center text-muted-foreground py-8">
+                    {isLoading ? 'Loading maintainers...' : isError ? (error as Error)?.message : 'No maintainers found'}
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isLoading && currentMaintainers.map((maintainer) => (
                 <TableRow key={maintainer.id}>
                   {visibleColumns.includes('Maintainer') && (
                     <TableCell className="font-medium">
-                      {maintainer.name}
+                      {maintainer.firstName} {maintainer.lastName}
                     </TableCell>
                   )}
                   {visibleColumns.includes('Email Address') && (
                     <TableCell className="text-muted-foreground">{maintainer.email}</TableCell>
                   )}
                   {visibleColumns.includes('User') && (
-                    <TableCell className="text-muted-foreground">{maintainer.user}</TableCell>
+                    <TableCell className="text-muted-foreground">{maintainer.phoneNumber}</TableCell>
                   )}
                   {visibleColumns.includes('Creation Date') && (
-                    <TableCell className="text-muted-foreground">{maintainer.creationDate}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(maintainer.createdAt)}</TableCell>
                   )}
                   {visibleColumns.includes('Type') && (
-                    <TableCell className="text-muted-foreground">{maintainer.type}</TableCell>
+                    <TableCell className="text-muted-foreground">{maintainer.maintainerType}</TableCell>
                   )}
                   {visibleColumns.includes('Actions') && (
-                    <TableCell className="text-right relative row-menu-container">
-                      <button
-                        onClick={() => setShowRowMenu(showRowMenu === maintainer.id ? null : maintainer.id)}
-                        className="p-1 hover:bg-muted rounded"
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
-                      {showRowMenu === maintainer.id && (
-                        <div className="absolute right-0 top-full mt-1 w-32 bg-card border border-border rounded-lg shadow-lg p-1 z-10" style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}>
-                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2">
-                            <Edit className="w-4 h-4" />
-                            Edit
-                          </button>
-                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2 text-brand-text" style={{ color: '#f30100' }}>
-                            <Trash2 className="w-4 h-4" />
-                            Delete
-                          </button>
-                        </div>
-                      )}
+                    <TableCell className="text-right">
+                      <RowActionsMenu label={`Actions for ${maintainer.firstName} ${maintainer.lastName}`}>
+                        {(close) => (
+                          <>
+                            <RowAction
+                              onClick={() => {
+                                setEditing(maintainer);
+                                setModalOpen(true);
+                                close();
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                              Edit
+                            </RowAction>
+                            <DeleteMaintainerButton id={maintainer.id} onClose={close} />
+                          </>
+                        )}
+                      </RowActionsMenu>
                     </TableCell>
                   )}
                 </TableRow>
@@ -199,6 +239,7 @@ const Maintainers = () => {
             style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
           >
             <option value={10}>10</option>
+            <option value={15}>15</option>
             <option value={25}>25</option>
             <option value={50}>50</option>
           </select>
@@ -260,6 +301,8 @@ const Maintainers = () => {
           </button>
         </div>
       </div>
+
+      <MaintainerFormModal isOpen={modalOpen} onClose={() => setModalOpen(false)} maintainer={editing} />
     </div>
   );
 };
