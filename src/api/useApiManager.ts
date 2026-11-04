@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { toast } from "sonner";
 import AxiosWithToken from "../api/axios_with_token";
 import Axios from "../api/axios_without_token";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 interface Props {
   endpoint: string;
@@ -93,14 +93,15 @@ const useApiManager = ({
   const mutation = useMutation({
     mutationFn: apiController,
     onSuccess: (response) => {
-      if (showSuccessToastt && response?.message)
-        showSuccessToast(response.message);
+      if (showSuccessToastt && response?.message) {
+        toast.success(response.message);
+      }
       queryKey.forEach((key) => {
         if (key) queryClient.invalidateQueries({ queryKey: [key] });
       });
     },
     onError: (error: Error) => {
-      showErrorToast(error.message);
+      toast.error(error.message);
       console.error(`${method} error:`, error);
     },
   });

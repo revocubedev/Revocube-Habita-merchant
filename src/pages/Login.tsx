@@ -16,59 +16,69 @@ const Login = () => {
   const loginMutation = useMutation({
     mutationFn: loginEstateManager,
     onSuccess: (response) => {
-      console.log("Login successful:", response);
-
-      // Extract token and user data from response
-      const token = response.data?.token || response.token || '';
+      const token = response.data?.token || response.token || "";
 
       if (!token) {
-        console.error('No token received from server');
         Swal.fire({
-          icon: 'error',
-          title: 'Login Failed',
-          text: 'No authentication token received',
-          confirmButtonColor: '#f30100',
-          confirmButtonText: 'OK',
+          icon: "error",
+          title: "Login Failed",
+          text: "No authentication token received",
+          confirmButtonColor: "#f30100",
+          confirmButtonText: "OK",
         });
         return;
       }
 
-      // Extract user data with fallback
-      const managerData = response.data?.manager || response.manager;
+      const managerData = (response.data?.manager || response.manager) as any;
+      const estates = ((response.data as any)?.estates as any[]) || [];
+      const estateCode: string | undefined = estates[0]?.estateCode;
+
+      if (!estateCode) {
+        Swal.fire({
+          icon: "error",
+          title: "Login Failed",
+          text: "No estate is linked to this account",
+          confirmButtonColor: "#f30100",
+          confirmButtonText: "OK",
+        });
+        return;
+      }
+
       const userData: User = {
-        id: (managerData?.id as string) || '1',
-        name: (managerData?.name as string) || response.data?.name || 'Estate Manager',
-        email: (managerData?.email as string) || email,
-        role: (managerData?.role as string) || 'Admin',
+        id: managerData?.id || "",
+        name:
+          [managerData?.firstName, managerData?.lastName]
+            .filter(Boolean)
+            .join(" ") || "Estate Manager",
+        email: managerData?.email || email,
+        role: managerData?.role || "Admin",
       };
 
-      // Store token and user data
+      // Must be set before navigating, since hooks read "code" from localStorage
+      localStorage.setItem("code", estateCode);
+      localStorage.setItem("estates", JSON.stringify(estates));
       login(token, userData);
 
-      // Show success alert
       Swal.fire({
-        icon: 'success',
-        title: 'Login Successful',
-        text: 'Welcome back!',
-        confirmButtonColor: '#f30100',
-        confirmButtonText: 'OK',
+        icon: "success",
+        title: "Login Successful",
+        text: "Welcome back!",
+        confirmButtonColor: "#f30100",
+        confirmButtonText: "OK",
         timer: 1500,
         timerProgressBar: true,
-      }).then(() => {
-        // Navigate to dashboard
-        navigate('/');
-      });
+      }).then(() => navigate("/"));
     },
     onError: (error) => {
       console.error("Login error:", getApiErrorMessage(error));
       const errorMessage = getApiErrorMessage(error);
 
       Swal.fire({
-        icon: 'error',
-        title: 'Login Failed',
+        icon: "error",
+        title: "Login Failed",
         text: errorMessage,
-        confirmButtonColor: '#f30100',
-        confirmButtonText: 'OK',
+        confirmButtonColor: "#f30100",
+        confirmButtonText: "OK",
       });
     },
   });
