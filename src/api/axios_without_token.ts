@@ -1,10 +1,6 @@
 import axios from "axios";
 
-export const baseURL = import.meta.env.VITE_API_BASE_URL;
-
-if (!baseURL) {
-  throw new Error("VITE_API_BASE_URL is missing from environment variables");
-}
+export const baseURL = "/api";
 
 const Axios = axios.create({
   baseURL,

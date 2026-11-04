@@ -5,11 +5,7 @@ import axios, { AxiosError } from "axios";
 // API CONFIGURATION
 // ==========================================
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-if (!BASE_URL) {
-    throw new Error("VITE_API_BASE_URL is missing from environment variables");
-}
+const BASE_URL = "/api";
 
 // Public API for endpoints that don't require authentication (no withCredentials)
 export const publicApi = axios.create({
