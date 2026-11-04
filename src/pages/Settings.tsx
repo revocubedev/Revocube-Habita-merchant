@@ -1,11 +1,30 @@
 import { useState } from 'react';
 import { Upload, User, Shield, Lock, Settings as SettingsIcon, Building, Mail, CreditCard, Search, ChevronDown } from 'lucide-react';
+import { useGetAdminRoles } from '@/api/api_controllers/adminController';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('User Profile');
   const [fullName, setFullName] = useState('');
+  const [currentPage] = useState(1);
   const [email, setEmail] = useState('');
-  const [adminRole, setAdminRole] = useState('');
+  const [adminRole, setAdminRole] = useState(""); // selected role id
+
+  const { data: rolesData, isLoading: rolesLoading } = useGetAdminRoles({
+    page: 1,
+    perPage: 100, // a dropdown needs all roles, not page 1 of 20
+    enabled: true,
+  });
+
+  // Handles [..], { data: [..] }, { data: { roles: [..] } }, { data: { data: [..] } }
+  const roles: { id: string; name: string }[] = (() => {
+    if (Array.isArray(rolesData)) return rolesData;
+    const d = rolesData?.data;
+    if (Array.isArray(d)) return d;
+    if (Array.isArray(d?.roles)) return d.roles;
+    if (Array.isArray(d?.data)) return d.data;
+    if (Array.isArray(d?.items)) return d.items;
+    return [];
+  })();
 
   const tabs = [
     { id: 'User Profile', label: 'User Profile', description: 'User Account Profile Settings', icon: User },
@@ -213,13 +232,16 @@ const Settings = () => {
                     <select
                       value={adminRole}
                       onChange={(e) => setAdminRole(e.target.value)}
+                      disabled={rolesLoading}
                       className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-brand-text/20 appearance-none"
                       style={{ fontFamily: 'Poppins', borderColor: '#e3e3e3', height: '40px' }}
                     >
-                      <option value="">Select role...</option>
-                      <option value="Super Admin">Super Admin</option>
-                      <option value="Admin">Admin</option>
-                      <option value="Manager">Manager</option>
+                      <option value="">
+                        {rolesLoading ? 'Loading roles...' : 'Select role...'}
+                      </option>
+                      {roles.map((role) => (
+                        <option key={role.id} value={role.id}>{role.name}</option>
+                      ))}
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   </div>
