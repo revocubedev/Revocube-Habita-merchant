@@ -28,6 +28,7 @@ import Units from '@/pages/real-estate/Units';
 import Management from '@/pages/management';
 import Users from '@/pages/management/Users';
 import Roles from '@/pages/management/Roles';
+import { Toaster } from 'sonner';
 
 // Query Client Configuration
 const queryClient = new QueryClient({
@@ -111,6 +112,7 @@ function App() {
           <AppContent />
         </AuthProvider>
       </ThemeProvider>
+      <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
 }
