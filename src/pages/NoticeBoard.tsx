@@ -3,6 +3,9 @@ import { MoreHorizontal, Download, Edit, Trash2 } from "lucide-react";
 import Card from "@/components/ui/Card";
 import { CardContent } from "@/components/ui/Card";
 import { useGetNoticeCall } from "@/api/api_controllers/noticeController";
+import EditNoticeModal from "@/components/portal/EditNoticeModal";
+import AddNoticeModal from "@/components/portal/AddNoticeModal";
+import DeleteModal from "@/components/ui/DeleteModal";
 
 interface Notice {
   id: string;
@@ -39,6 +42,10 @@ const formatDate = (value?: string) => {
 const NoticeBoard = () => {
   const [showCardMenu, setShowCardMenu] = useState<string | null>(null);
   const [currentPage] = useState(1);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
+  const [deletingNotice, setDeletingNotice] = useState<Notice | null>(null);
+
   const { data, isLoading, isError, error } = useGetNoticeCall({
     page: currentPage,
     perPage: 20,
@@ -76,6 +83,7 @@ const NoticeBoard = () => {
           Note List
         </h2>
         <button
+          onClick={() => setIsAddOpen(true)}
           className="text-sm text-white transition-colors flex items-center gap-2 px-4 py-2"
           style={{
             fontFamily: "Poppins",
@@ -84,7 +92,7 @@ const NoticeBoard = () => {
             border: "none",
           }}
         >
-          + Create Note
+          + Create Notice
         </button>
       </div>
 
@@ -150,7 +158,13 @@ const NoticeBoard = () => {
                       className="absolute right-0 top-full mt-1 w-40 bg-card border border-border rounded-lg shadow-lg p-1 z-10"
                       style={{ borderColor: "#e3e3e3", borderRadius: "8px" }}
                     >
-                      <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingNotice(notice);
+                          setShowCardMenu(null);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2"
+                      >
                         <Edit className="w-4 h-4" />
                         Edit Notice
                       </button>
@@ -158,7 +172,10 @@ const NoticeBoard = () => {
                         <Download className="w-4 h-4" />
                         Download
                       </button>
-                      <button
+                      <button onClick={() => {
+                        setDeletingNotice(notice);
+                        setShowCardMenu(null);
+                      }}
                         className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2 text-brand-text"
                         style={{ color: "#f30100" }}
                       >
@@ -204,6 +221,27 @@ const NoticeBoard = () => {
           </Card>
         ))}
       </div>
+
+      <AddNoticeModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+      {editingNotice && (
+        <EditNoticeModal
+          key={editingNotice.id}
+          isOpen
+          onClose={() => setEditingNotice(null)}
+          notice={editingNotice}
+        />
+      )}
+      {deletingNotice && (
+        <DeleteModal
+          key={deletingNotice.id}
+          isOpen
+          onClose={() => setDeletingNotice(null)}
+          endpoint={`notices/${deletingNotice.id}`}
+          queryKey={["get_notice"]}
+          entity="Notice"
+          itemName={deletingNotice.title}
+        />
+      )}
     </div>
   );
 };

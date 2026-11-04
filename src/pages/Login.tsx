@@ -1,36 +1,45 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import Swal from 'sweetalert2';
-import 'sweetalert2/dist/sweetalert2.min.css';
-import { loginEstateManager, getApiErrorMessage } from '@/api';
-import { useAuth } from '@/lib/auth';
-import type { User } from '@/types';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+import "sweetalert2/dist/sweetalert2.min.css";
+import useApiManager from "@/api/useApiManager"; // adjust to where your hook lives
+import { useAuth } from "@/lib/auth";
+import type { User } from "@/types";
 
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const loginMutation = useMutation({
-    mutationFn: loginEstateManager,
-    onSuccess: (response) => {
-      const token = response.data?.token || response.token || "";
+  // Errors are toasted by the hook (sonner), so no onError needed here
+  const { callApi: loginRequest, isLoading } = useApiManager({
+    endpoint: "/estate-managers/login",
+    method: "POST",
+    isAuth: false,
+    isCode: false,
+    showSuccessToastt: false,
+  });
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const response = await loginRequest({ email, password });
+
+      const token: string = response?.data?.token || response?.token || "";
       if (!token) {
         Swal.fire({
           icon: "error",
           title: "Login Failed",
           text: "No authentication token received",
           confirmButtonColor: "#f30100",
-          confirmButtonText: "OK",
         });
         return;
       }
 
-      const managerData = (response.data?.manager || response.manager) as any;
-      const estates = ((response.data as any)?.estates as any[]) || [];
+      const managerData = response?.data?.manager || response?.manager;
+      const estates: any[] = response?.data?.estates || [];
       const estateCode: string | undefined = estates[0]?.estateCode;
 
       if (!estateCode) {
@@ -39,7 +48,6 @@ const Login = () => {
           title: "Login Failed",
           text: "No estate is linked to this account",
           confirmButtonColor: "#f30100",
-          confirmButtonText: "OK",
         });
         return;
       }
@@ -54,82 +62,63 @@ const Login = () => {
         role: managerData?.role || "Admin",
       };
 
-      // Must be set before navigating, since hooks read "code" from localStorage
+      // Set before navigating: hooks read "code" from localStorage
       localStorage.setItem("code", estateCode);
       localStorage.setItem("estates", JSON.stringify(estates));
       login(token, userData);
 
-      Swal.fire({
+      await Swal.fire({
         icon: "success",
         title: "Login Successful",
         text: "Welcome back!",
         confirmButtonColor: "#f30100",
-        confirmButtonText: "OK",
         timer: 1500,
         timerProgressBar: true,
-      }).then(() => navigate("/"));
-    },
-    onError: (error) => {
-      console.error("Login error:", getApiErrorMessage(error));
-      const errorMessage = getApiErrorMessage(error);
-
-      Swal.fire({
-        icon: "error",
-        title: "Login Failed",
-        text: errorMessage,
-        confirmButtonColor: "#f30100",
-        confirmButtonText: "OK",
       });
-    },
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    loginMutation.mutate({ email, password });
+      navigate("/");
+    } catch {
+      // useApiManager already showed the error toast
+    }
   };
 
   return (
-    <div 
+    <div
       className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat"
-      style={{ 
-        backgroundImage: 'url(/assets/bgauthimg.png)',
-        fontFamily: 'Poppins'
+      style={{
+        backgroundImage: "url(/assets/bgauthimg.png)",
+        fontFamily: "Poppins",
       }}
     >
-      <div 
+      <div
         className="w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl"
-        style={{ borderRadius: '24px' }}
+        style={{ borderRadius: "24px" }}
       >
-        {/* Logo */}
         <div className="mb-8">
-          <img 
-            src="/assets/spacesl.png" 
+          <img
+            src="/assets/spacesl.png"
             alt="Revocube Spaces Logo"
             className="h-12 w-auto"
           />
         </div>
 
-        {/* Heading */}
-        <h2 
+        <h2
           className="text-2xl font-semibold mb-2"
-          style={{ fontFamily: 'Poppins', color: '#393939' }}
+          style={{ fontFamily: "Poppins", color: "#393939" }}
         >
           Welcome back!
         </h2>
-        <p 
+        <p
           className="text-sm mb-6"
-          style={{ fontFamily: 'Poppins', color: '#777777' }}
+          style={{ fontFamily: "Poppins", color: "#777777" }}
         >
           Please enter your details to sign in
         </p>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label 
+            <label
               className="block text-sm font-medium mb-2"
-              style={{ fontFamily: 'Poppins', color: '#4c4c4c' }}
+              style={{ fontFamily: "Poppins", color: "#4c4c4c" }}
             >
               Email Address
             </label>
@@ -140,18 +129,18 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#f30100]/20 transition-colors"
-              style={{ 
-                fontFamily: 'Poppins', 
-                borderColor: '#e3e3e3',
-                height: '48px'
+              style={{
+                fontFamily: "Poppins",
+                borderColor: "#e3e3e3",
+                height: "48px",
               }}
             />
           </div>
 
           <div>
-            <label 
+            <label
               className="block text-sm font-medium mb-2"
-              style={{ fontFamily: 'Poppins', color: '#4c4c4c' }}
+              style={{ fontFamily: "Poppins", color: "#4c4c4c" }}
             >
               Password
             </label>
@@ -162,10 +151,10 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#f30100]/20 transition-colors"
-              style={{ 
-                fontFamily: 'Poppins', 
-                borderColor: '#e3e3e3',
-                height: '48px'
+              style={{
+                fontFamily: "Poppins",
+                borderColor: "#e3e3e3",
+                height: "48px",
               }}
             />
           </div>
@@ -174,7 +163,7 @@ const Login = () => {
             <a
               href="#"
               className="text-sm"
-              style={{ fontFamily: 'Poppins', color: '#f30100' }}
+              style={{ fontFamily: "Poppins", color: "#f30100" }}
             >
               Forgot password?
             </a>
@@ -182,33 +171,28 @@ const Login = () => {
 
           <button
             type="submit"
-            disabled={loginMutation.isPending}
-            className="w-full text-white transition-colors"
+            disabled={isLoading}
+            className="w-full text-white transition-colors disabled:opacity-60"
             style={{
-              fontFamily: 'Poppins',
-              borderRadius: '12px',
-              backgroundColor: '#f30100',
-              border: 'none',
-              height: '48px',
-              fontSize: '16px',
-              fontWeight: 500
+              fontFamily: "Poppins",
+              borderRadius: "12px",
+              backgroundColor: "#f30100",
+              border: "none",
+              height: "48px",
+              fontSize: "16px",
+              fontWeight: 500,
             }}
           >
-            {loginMutation.isPending ? 'Signing in...' : 'Login'}
+            {isLoading ? "Signing in..." : "Login"}
           </button>
         </form>
 
-        {/* Sign Up Link */}
-        <p 
+        <p
           className="mt-6 text-center text-sm"
-          style={{ fontFamily: 'Poppins', color: '#777777' }}
+          style={{ fontFamily: "Poppins", color: "#777777" }}
         >
-          Don't have an account?{' '}
-          <a 
-            href="#"
-            className="font-medium"
-            style={{ color: '#f30100' }}
-          >
+          Don't have an account?{" "}
+          <a href="#" className="font-medium" style={{ color: "#f30100" }}>
             Sign up
           </a>
         </p>
