@@ -24,6 +24,8 @@ export interface ModalProps {
   showCloseButton?: boolean;
   align?: 'start' | 'center';
   bodyClassName?: string;
+  presentation?: 'modal' | 'drawer';
+  closeIcon?: React.ReactNode;
   variant?: 'modal' | 'drawer';
 }
 
@@ -42,6 +44,9 @@ const Modal = ({
   size = 'md',
   showCloseButton = true,
   align = 'center',
+  bodyClassName = 'px-8 py-6',
+  presentation = 'modal',
+  closeIcon,
   bodyClassName = 'px-6 py-5',
   variant = 'modal',
 }: ModalProps) => {
@@ -100,6 +105,9 @@ const Modal = ({
   return createPortal(
     <div
       className={cn(
+        'fixed inset-0 z-[100] flex overflow-y-auto',
+        presentation === 'drawer' ? 'justify-end' : 'justify-center px-6',
+        presentation === 'drawer' ? 'items-start' : align === 'center' ? 'items-center py-10' : 'items-start py-16'
         'fixed inset-0 z-[100] flex justify-center overflow-y-auto px-6',
         align === 'center' ? 'items-center py-6' : 'items-start py-10'
       )}
@@ -111,6 +119,11 @@ const Modal = ({
       aria-modal="true"
     >
       <div
+        className={cn('w-full bg-card text-card-foreground shadow-lg', presentation === 'drawer' ? 'h-dvh max-w-[622px] overflow-y-auto' : ['rounded-2xl border border-border', sizes[size]])}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className={cn('flex items-center justify-between px-8 border-b border-border', presentation === 'drawer' ? 'h-[50px] border-[#eaeaea]' : 'py-5')}>
+          <h2 className={cn('text-foreground', presentation === 'drawer' ? 'text-sm font-medium' : 'font-semibold text-[16px]')}>{title}</h2>
         className={cn('w-full max-h-[calc(100vh-3rem)] flex flex-col bg-card text-card-foreground rounded-2xl border border-border shadow-lg', sizes[size])}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -120,10 +133,10 @@ const Modal = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-9 h-9 rounded-full bg-muted hover:bg-border flex items-center justify-center transition-colors"
+              className={cn('rounded-full hover:bg-border flex items-center justify-center transition-colors', presentation === 'drawer' ? 'h-[26px] w-[26px] bg-[#f6f6f6]' : 'w-9 h-9 bg-muted')}
               aria-label="Close"
             >
-              <X className="w-4 h-4 text-muted-foreground" />
+              {closeIcon ?? <X className="w-4 h-4 text-muted-foreground" />}
             </button>
           )}
         </div>
