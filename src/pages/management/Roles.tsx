@@ -17,7 +17,7 @@ import {
   useGetAdminRoles,
   extractRoles,
 } from "@/api/api_controllers/adminController";
-import RoleModal from "@/components/portal/rolesModal";
+import RoleModal, { type Role } from "@/components/portal/RolesModal";
 
 
 const Roles = () => {

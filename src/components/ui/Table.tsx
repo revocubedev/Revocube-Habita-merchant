@@ -48,9 +48,9 @@ const TableHead = ({ children, className }: TableProps) => {
   );
 };
 
-const TableCell = ({ children, className, colSpan }: TableProps & { colSpan?: number }) => {
+const TableCell = ({ children, className, colSpan, style }: TableProps & { colSpan?: number; style?: React.CSSProperties }) => {
   return (
-    <td colSpan={colSpan} className={cn('p-4 align-middle [&:has([role=checkbox])]:pr-0', className)}>
+    <td colSpan={colSpan} style={style} className={cn('p-4 align-middle [&:has([role=checkbox])]:pr-0', className)}>
       {children}
     </td>
   );

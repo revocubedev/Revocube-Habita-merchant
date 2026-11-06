@@ -1,8 +1,9 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useParams } from 'react-router-dom';
 import { LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { navItems, userProfile } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { estatePath } from '@/lib/estateRoutes';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface SidebarProps {
 
 const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
   const location = useLocation();
+  const { estateCode = '' } = useParams();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['management', 'real estate', 'finance']));
 
   const toggleExpanded = (label: string) => {
@@ -27,9 +29,9 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
   };
 
   const isItemActive = (item: any, currentPath: string): boolean => {
-    if (item.to === currentPath) return true;
+    if (estatePath(estateCode, item.to) === currentPath) return true;
     if (item.children) {
-      return item.children.some((child: any) => child.to === currentPath);
+      return item.children.some((child: any) => estatePath(estateCode, child.to) === currentPath);
     }
     return false;
   };
@@ -72,7 +74,7 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
     return (
       <NavLink
         key={item.to}
-        to={item.to}
+        to={estatePath(estateCode, item.to)}
         end={item.end}
         onClick={() => onToggle()}
         className={({ isActive: linkIsActive }) =>
@@ -96,7 +98,7 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
       {/* Mobile backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
           onClick={onToggle}
         />
       )}
@@ -104,11 +106,10 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed lg:static z-50 inset-y-0 left-0 bg-card border-r border-border flex-col transition-transform duration-300',
-          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          'fixed md:static z-50 inset-y-0 left-0 h-screen shrink-0 w-[276px] md:w-[220px] lg:w-[276px] bg-card border-r border-border flex-col transition-transform duration-300',
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
           'flex'
         )}
-        style={{ width: '276px' }}
       >
         {/* Logo */}
         <div className="px-5 py-5 flex items-center gap-2.5 border-b border-border">

@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { Search, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2, Eye, Download } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import { CardContent } from '@/components/ui/Card';
@@ -84,7 +85,7 @@ const normalizeExpense = (expense: ApiExpense): ExpenseRow => ({
 });
 
 const Expense = () => {
-  const estateCode = import.meta.env.VITE_ESTATE_CODE || '';
+  const { estateCode = '' } = useParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);

@@ -6,9 +6,11 @@ import { CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
 import { mockInvoices } from '@/lib/mockData';
+import { ReceivingAccountsModal } from '@/components/finance/ReceivingAccountModals';
 
 const Invoices = () => {
   const [showColumnMenu, setShowColumnMenu] = useState(false);
+  const [accountsOpen, setAccountsOpen] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState(['Invoice', 'Invoice Type', 'Property', 'Unit']);
@@ -72,7 +74,15 @@ const Invoices = () => {
         <h2 className="text-[16px] font-display font-medium text-foreground" style={{ fontFamily: 'Poppins', fontWeight: 500, color: '#4c4c4c' }}>
           Invoice List
         </h2>
-        <button
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setAccountsOpen(true)}
+            className="text-sm flex items-center gap-2 px-4 py-2 border rounded-lg bg-card hover:bg-muted"
+            style={{ fontFamily: 'Poppins', borderColor: '#f30100', color: '#f30100' }}
+          >
+            Receiving Accounts
+          </button>
+          <button
           className="text-sm text-white transition-colors flex items-center gap-2 px-4 py-2"
           style={{ 
             fontFamily: 'Poppins', 
@@ -80,9 +90,10 @@ const Invoices = () => {
             backgroundColor: '#f30100',
             border: 'none'
           }}
-        >
-          + Create Invoice
-        </button>
+          >
+            + Create Invoice
+          </button>
+        </div>
       </div>
 
       {/* Data Table with Toolbar */}
@@ -403,6 +414,7 @@ const Invoices = () => {
           </button>
         </div>
       </div>
+      <ReceivingAccountsModal isOpen={accountsOpen} onClose={() => setAccountsOpen(false)} />
     </div>
   );
 };

@@ -5,7 +5,7 @@ import { useGetAdminRoles } from '@/api/api_controllers/adminController';
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('User Profile');
   const [fullName, setFullName] = useState('');
-  const [currentPage] = useState(1);
+  // const [currentPage] = useState(1);
   const [email, setEmail] = useState('');
   const [adminRole, setAdminRole] = useState(""); // selected role id
 
