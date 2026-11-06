@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import AxiosWithToken from "../api/axios_with_token";
 import Axios from "../api/axios_without_token";
@@ -23,11 +24,11 @@ export class ApiError extends Error {
   }
 }
 
-const buildUrl = (endpoint: string, isCode: boolean) => {
+const buildUrl = (endpoint: string, isCode: boolean, code?: string) => {
   const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   if (!isCode) return path;
-  const code = localStorage.getItem("code"); // read at call time, not render time
-  return `/${code}${path}`;
+  if (!code) throw new Error("Estate code is missing from the URL");
+  return `/${encodeURIComponent(code)}${path}`;
 };
 
 const useApiManager = ({
@@ -35,17 +36,19 @@ const useApiManager = ({
   queryKey = [],
   method = "POST",
   isAuth = false,
-  isCode = false, // Habita has no tenant code
+  isCode = false,
   showSuccessToastt = true,
   contentType = "application/json",
   validateResponse,
+  successMessage,
 }: Props) => {
   const queryClient = useQueryClient();
+  const { estateCode } = useParams();
   const axiosInstance = isAuth ? AxiosWithToken : Axios;
   const [statusCode, setStatusCode] = useState<number | null>(null);
 
   const apiController = async (details: any) => {
-    const url = buildUrl(endpoint, isCode);
+    const url = buildUrl(endpoint, isCode, estateCode);
     const config = {
       // Let the browser supply the multipart boundary instead of inheriting JSON headers.
       headers: details instanceof FormData ? { "Content-Type": undefined } : contentType ? { "Content-Type": contentType } : undefined,
@@ -103,11 +106,15 @@ const useApiManager = ({
   const mutation = useMutation({
     mutationFn: apiController,
     onSuccess: (response) => {
-      if (showSuccessToastt && response?.message) {
-        toast.success(response.message);
+      if (showSuccessToastt && (successMessage || response?.message)) {
+        toast.success(successMessage || response.message);
       }
       queryKey.forEach((key) => {
-        if (key) queryClient.invalidateQueries({ queryKey: [key] });
+        if (key) {
+          queryClient.invalidateQueries({
+            queryKey: isCode ? [estateCode, key] : [key],
+          });
+        }
       });
     },
     onError: (error: Error) => {

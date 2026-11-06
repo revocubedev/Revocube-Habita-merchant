@@ -5,6 +5,7 @@ import "sweetalert2/dist/sweetalert2.min.css";
 import useApiManager from "@/api/useApiManager"; // adjust to where your hook lives
 import { useAuth } from "@/lib/auth";
 import type { User } from "@/types";
+import { estatePath } from "@/lib/estateRoutes";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -75,7 +76,7 @@ const Login = () => {
         timer: 1500,
         timerProgressBar: true,
       });
-      navigate("/");
+      navigate(estatePath(estateCode));
     } catch {
       // useApiManager already showed the error toast
     }

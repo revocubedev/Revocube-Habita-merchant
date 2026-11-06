@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Modal, { Field } from "@/components/ui/Modal";
-import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
-import type { FormEvent } from "react";
+
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { Search, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2, Eye, Download } from 'lucide-react';
+import Card from '@/components/ui/Card';
+import { CardContent } from '@/components/ui/Card';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
+import { mockExpenses } from '@/lib/mockData';
 import {
   useCreateExpense,
   useUpdateExpense,
@@ -38,8 +40,41 @@ const emptyForm = (): ExpenseForm => ({
   unit: "",
 });
 
-const inputClass =
-  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm";
+const Expense = () => {
+  const { estateCode = '' } = useParams();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showColumnMenu, setShowColumnMenu] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState(['Expense', 'Title', 'Property', 'Unit', 'Type', 'Date', 'Amount', 'Receipt', 'Actions']);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [expenses, setExpenses] = useState<ExpenseRow[]>(mockExpenses as ExpenseRow[]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [form, setForm] = useState<ExpenseFormState>({
+    title: '',
+    issueType: '',
+    amount: '',
+    date: '',
+    notes: '',
+    receipt: null,
+  });
+
+  useEffect(() => {
+    const loadExpenses = async () => {
+      if (!estateCode) {
+        setExpenses(mockExpenses as ExpenseRow[]);
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const response = await getAllExpenses(estateCode);
 
 const buttonClass =
   "rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-50";

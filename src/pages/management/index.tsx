@@ -1,16 +1,17 @@
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useEffect } from 'react';
 
 const Management = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { estateCode } = useParams();
 
-  // Redirect to /management/users if on /management
+  // Open the users list when the management section itself is selected.
   useEffect(() => {
-    if (location.pathname === '/management') {
-      navigate('/management/users', { replace: true });
+    if (estateCode && location.pathname === `/${encodeURIComponent(estateCode)}/management`) {
+      navigate('users', { replace: true });
     }
-  }, [location.pathname, navigate]);
+  }, [estateCode, location.pathname, navigate]);
 
   return (
     <div className="space-y-6">

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Settings, ChevronDown, LogOut } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { Settings, ChevronDown, LogOut, Menu } from 'lucide-react';
+import { useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import type { Theme } from '@/types';
+import { estatePath } from '@/lib/estateRoutes';
 
 interface HeaderProps {
   theme: Theme;
@@ -10,8 +11,9 @@ interface HeaderProps {
   onMenuToggle: () => void;
 }
 
-const Header = ({ onMenuToggle: _onMenuToggle }: HeaderProps) => {
+const Header = ({ onMenuToggle }: HeaderProps) => {
   const location = useLocation();
+  const { estateCode = '' } = useParams();
   const { user, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -29,7 +31,7 @@ const Header = ({ onMenuToggle: _onMenuToggle }: HeaderProps) => {
   }, []);
   
   const getPageTitle = () => {
-    const path = location.pathname;
+    const path = location.pathname.slice(estatePath(estateCode).length) || '/';
     if (path === '/' || path === '/dashboard') return 'Dashboard';
     if (path === '/members') return 'Members';
     if (path === '/maintainers') return 'Maintainers';
@@ -49,9 +51,19 @@ const Header = ({ onMenuToggle: _onMenuToggle }: HeaderProps) => {
   return (
     <header className="h-[82px] border-b border-border bg-card sticky top-0 z-20 flex items-center justify-between px-6">
       {/* Left side - Page title */}
-      <h1 className="text-xl font-display font-semibold text-foreground" style={{ fontFamily: 'Poppins', fontWeight: 500 }}>
-        {getPageTitle()}
-      </h1>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onMenuToggle}
+          className="md:hidden w-9 h-9 rounded-lg hover:bg-muted flex items-center justify-center"
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <h1 className="text-xl font-display font-semibold text-foreground" style={{ fontFamily: 'Poppins', fontWeight: 500 }}>
+          {getPageTitle()}
+        </h1>
+      </div>
 
       {/* Right side - User profile */}
       <div className="flex items-center gap-3">

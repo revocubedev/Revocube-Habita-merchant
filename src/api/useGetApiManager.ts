@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 import AxiosWithToken from "./axios_with_token";
 import Axios from "../api/axios_without_token";
 
@@ -22,12 +23,14 @@ export default function useGetApiManager<TData = any>({
   select,
 }: Props<TData>) {
   const axiosInstance = isAuth ? AxiosWithToken : Axios;
+  const { estateCode } = useParams();
 
   return useQuery({
-    queryKey,
+    queryKey: isCode ? [estateCode, ...queryKey] : queryKey,
     queryFn: async () => {
       const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-      const url = isCode ? `/${localStorage.getItem("code")}${path}` : path;
+      if (isCode && !estateCode) throw new Error("Estate code is missing from the URL");
+      const url = isCode ? `/${encodeURIComponent(estateCode!)}${path}` : path;
       try {
         const response = await axiosInstance.get(url, { params });
         return response.data;
@@ -39,6 +42,7 @@ export default function useGetApiManager<TData = any>({
     },
     enabled,
     select,
+    enabled: enabled && (!isCode || !!estateCode),
     refetchOnWindowFocus: false,
   });
 }
