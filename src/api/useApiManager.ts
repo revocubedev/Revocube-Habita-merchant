@@ -12,6 +12,7 @@ interface Props {
   isCode?: boolean;
   showSuccessToastt?: boolean;
   contentType?: string;
+  validateResponse?: (response: any) => unknown;
 }
 
 export class ApiError extends Error {
@@ -37,6 +38,7 @@ const useApiManager = ({
   isCode = false, // Habita has no tenant code
   showSuccessToastt = true,
   contentType = "application/json",
+  validateResponse,
 }: Props) => {
   const queryClient = useQueryClient();
   const axiosInstance = isAuth ? AxiosWithToken : Axios;
@@ -45,7 +47,8 @@ const useApiManager = ({
   const apiController = async (details: any) => {
     const url = buildUrl(endpoint, isCode);
     const config = {
-      headers: contentType ? { "Content-Type": contentType } : undefined,
+      // Let the browser supply the multipart boundary instead of inheriting JSON headers.
+      headers: details instanceof FormData ? { "Content-Type": undefined } : contentType ? { "Content-Type": contentType } : undefined,
       withCredentials: true,
     };
 
@@ -72,9 +75,16 @@ const useApiManager = ({
       }
 
       setStatusCode(response.status);
+      if (validateResponse) {
+        try {
+          validateResponse(response.data);
+        } catch (error) {
+          throw new ApiError(error instanceof Error ? error.message : "The request failed", response.status);
+        }
+      }
       return { ...response.data, statusCode: response.status };
     } catch (error: any) {
-      const status = error.response?.status || 500;
+      const status = error.response?.status || error.statusCode || 500;
       setStatusCode(status);
 
       const backendError = error.response?.data;

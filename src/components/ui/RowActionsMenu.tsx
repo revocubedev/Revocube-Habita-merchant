@@ -44,6 +44,8 @@ interface RowActionsMenuProps {
   align?: 'left' | 'right';
   triggerClassName?: string;
   panelClassName?: string;
+  triggerIcon?: React.ReactNode;
+  panelStyle?: React.CSSProperties;
 }
 
 const GAP = 6;
@@ -64,6 +66,8 @@ const RowActionsMenu = ({
   align = 'right',
   triggerClassName,
   panelClassName,
+  triggerIcon,
+  panelStyle,
 }: RowActionsMenuProps) => {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -142,7 +146,7 @@ const RowActionsMenu = ({
           triggerClassName
         )}
       >
-        <MoreHorizontal className="w-4 h-4" />
+        {triggerIcon ?? <MoreHorizontal className="w-4 h-4" />}
       </button>
 
       {open &&
@@ -162,6 +166,7 @@ const RowActionsMenu = ({
               fontFamily: 'Poppins, sans-serif',
               borderColor: '#e3e3e3',
               borderRadius: 8,
+              ...panelStyle,
             }}
             onMouseDown={(event) => event.stopPropagation()}
           >
