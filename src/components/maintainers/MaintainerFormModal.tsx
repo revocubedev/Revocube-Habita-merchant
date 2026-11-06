@@ -5,9 +5,10 @@ import {
   useUpdateMaintainer,
   type Maintainer,
   type MaintainerFormValues,
+  type MaintainerType,
 } from "@/api/api_controllers/maintainerController";
 
-const TYPES = ["PLUMBER", "ELECTRICIAN", "CARPENTER", "CLEANER", "SECURITY", "OTHER"];
+const TYPES: MaintainerType[] = ["PLUMBER", "ELECTRICITY", "CLEANING", "OTHER"];
 
 const empty: MaintainerFormValues = {
   firstName: "",
@@ -99,7 +100,7 @@ const MaintainerFormModal = ({ isOpen, onClose, maintainer }: Props) => {
         </label>
         <label className="text-sm space-y-2 block">
           <span className="block font-medium text-muted-foreground">Maintainer type</span>
-          <select className={inputCls} value={values.maintainerType} onChange={(e) => set("maintainerType", e.target.value)}>
+          <select className={inputCls} value={values.maintainerType} onChange={(e) => set("maintainerType", e.target.value as MaintainerType)}>
             {TYPES.map((t) => (
               <option key={t} value={t}>{t}</option>
             ))}
