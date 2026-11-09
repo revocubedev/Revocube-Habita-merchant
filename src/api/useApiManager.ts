@@ -12,6 +12,7 @@ interface Props {
   isAuth?: boolean;
   isCode?: boolean;
   showSuccessToastt?: boolean;
+  successMessage?: string;
   contentType?: string;
   validateResponse?: (response: any) => unknown;
 }
