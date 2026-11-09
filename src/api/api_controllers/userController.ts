@@ -17,6 +17,19 @@ export interface InviteAdminPayload {
   lastName: string;
 }
 
+export interface AuditLog {
+  id: string;
+  action: string;
+  timestamp?: string;
+  createdAt?: string;
+  ipAddress?: string;
+  adminId?: string;
+  email?: string;
+  roleId?: string;
+  statusCode?: number;
+  timeElapsed?: number;
+}
+
 export type UpdateUserPayload = Omit<CreateUserPayload, "password">;
 
 export const useGetUsers = ({
@@ -180,4 +193,32 @@ export const useUpdatePassword = (id?: string) => {
 
   const updatePassword = (details: UpdatePasswordPayload) => callApi(details);
   return { updatePassword, isLoading, error, isSuccess };
+};
+
+export const useGetAuditLogs = ({
+  page,
+  perPage = 10,
+  enabled = true,
+}: {
+  page: number;
+  perPage?: number;
+  enabled?: boolean;
+}) =>
+  useGetApiManager({
+    queryKey: ["get_audit_logs", page, perPage],
+    isAuth: true,
+    isCode: true,
+    endpoint: "estate/audit-logs",
+    enabled,
+    params: { page, perPage },
+  });
+
+// Response is { success, message, data: AuditLog[] }
+export const extractAuditLogs = (payload: any): AuditLog[] => {
+  if (Array.isArray(payload)) return payload;
+  const d = payload?.data;
+  if (Array.isArray(d)) return d;
+  if (Array.isArray(d?.logs)) return d.logs;
+  if (Array.isArray(d?.data)) return d.data;
+  return [];
 };
