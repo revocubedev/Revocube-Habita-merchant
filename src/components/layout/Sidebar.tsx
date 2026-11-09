@@ -1,8 +1,8 @@
 import { NavLink, useLocation, useParams } from 'react-router-dom';
-import { LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LogOut, ChevronRight } from 'lucide-react';
 import { navItems, userProfile } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { estatePath } from '@/lib/estateRoutes';
 
 interface SidebarProps {
@@ -14,7 +14,41 @@ interface SidebarProps {
 const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
   const location = useLocation();
   const { estateCode = '' } = useParams();
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['management', 'real estate', 'finance']));
+
+  const isItemActive = (item: any, currentPath: string): boolean => {
+    if (estatePath(estateCode, item.to) === currentPath) return true;
+    if (item.children) {
+      return item.children.some((child: any) => estatePath(estateCode, child.to) === currentPath);
+    }
+    return false;
+  };
+
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
+    const initial = new Set(['management', 'real estate', 'finance']);
+    navItems.forEach((item) => {
+      if (item.children && isItemActive(item, location.pathname)) {
+        initial.add(item.label.toLowerCase());
+      }
+    });
+    return initial;
+  });
+
+  // Auto-expand parent item if one of its children is currently active on route change
+  useEffect(() => {
+    navItems.forEach((item) => {
+      if (item.children && isItemActive(item, location.pathname)) {
+        const key = item.label.toLowerCase();
+        setExpandedItems((prev) => {
+          if (!prev.has(key)) {
+            const next = new Set(prev);
+            next.add(key);
+            return next;
+          }
+          return prev;
+        });
+      }
+    });
+  }, [location.pathname, estateCode]);
 
   const toggleExpanded = (label: string) => {
     setExpandedItems((prev) => {
@@ -28,14 +62,6 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
     });
   };
 
-  const isItemActive = (item: any, currentPath: string): boolean => {
-    if (estatePath(estateCode, item.to) === currentPath) return true;
-    if (item.children) {
-      return item.children.some((child: any) => estatePath(estateCode, child.to) === currentPath);
-    }
-    return false;
-  };
-
   const renderNavItem = (item: any, depth = 0) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.has(item.label.toLowerCase());
@@ -45,7 +71,9 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
       return (
         <div key={item.to || item.label}>
           <button
+            type="button"
             onClick={() => toggleExpanded(item.label.toLowerCase())}
+            aria-expanded={isExpanded}
             className={cn(
               'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors',
               isActive
@@ -56,11 +84,12 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
           >
             <item.icon className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1 text-left">{item.label}</span>
-            {isExpanded ? (
-              <ChevronLeft className="w-4 h-4 flex-shrink-0" />
-            ) : (
-              <ChevronRight className="w-4 h-4 flex-shrink-0" />
-            )}
+            <ChevronRight
+              className={cn(
+                'w-4 h-4 flex-shrink-0 transition-transform duration-200',
+                isExpanded && 'rotate-90'
+              )}
+            />
           </button>
           {isExpanded && (
             <div className="space-y-1 mt-1">
@@ -129,7 +158,7 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
           {navItems.map((item) => renderNavItem(item))}
         </nav>
 
