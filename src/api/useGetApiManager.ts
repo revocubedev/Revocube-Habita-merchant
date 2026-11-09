@@ -40,7 +40,6 @@ export default function useGetApiManager<TData = any>({
         );
       }
     },
-    enabled,
     select,
     enabled: enabled && (!isCode || !!estateCode),
     refetchOnWindowFocus: false,

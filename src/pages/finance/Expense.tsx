@@ -1,12 +1,10 @@
-
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Search, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2, Eye, Download } from 'lucide-react';
-import Card from '@/components/ui/Card';
-import { CardContent } from '@/components/ui/Card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
-import { mockExpenses } from '@/lib/mockData';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
+// TODO: adjust these three paths to match your project.
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Modal from "@/components/ui/Modal";
 import {
   useCreateExpense,
   useUpdateExpense,
@@ -21,7 +19,7 @@ type Mode = "create" | "edit" | "view";
 type ExpenseForm = {
   title: string;
   issueType: string;
-  amount: number;
+  amount: string; // kept as a string so typing "1." or clearing the field works
   date: string;
   notes: string;
   receipt: File | null;
@@ -32,7 +30,7 @@ type ExpenseForm = {
 const emptyForm = (): ExpenseForm => ({
   title: "",
   issueType: "",
-  amount: 0,
+  amount: "",
   date: "",
   notes: "",
   receipt: null,
@@ -40,41 +38,10 @@ const emptyForm = (): ExpenseForm => ({
   unit: "",
 });
 
-const Expense = () => {
-  const { estateCode = '' } = useParams();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showColumnMenu, setShowColumnMenu] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState(['Expense', 'Title', 'Property', 'Unit', 'Type', 'Date', 'Amount', 'Receipt', 'Actions']);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [expenses, setExpenses] = useState<ExpenseRow[]>(mockExpenses as ExpenseRow[]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [form, setForm] = useState<ExpenseFormState>({
-    title: '',
-    issueType: '',
-    amount: '',
-    date: '',
-    notes: '',
-    receipt: null,
-  });
+const ISSUE_TYPES = ["security", "diesel", "power", "water", "cleaning", "repair", "others"];
 
-  useEffect(() => {
-    const loadExpenses = async () => {
-      if (!estateCode) {
-        setExpenses(mockExpenses as ExpenseRow[]);
-        return;
-      }
-
-      setIsLoading(true);
-
-      try {
-        const response = await getAllExpenses(estateCode);
+const inputClass =
+  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm disabled:opacity-60";
 
 const buttonClass =
   "rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-50";
@@ -139,6 +106,15 @@ function errorText(error: unknown): string {
   return error instanceof Error
     ? error.message
     : "Something went wrong. Please try again.";
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="block text-sm">{label}</span>
+      {children}
+    </label>
+  );
 }
 
 /*
@@ -287,8 +263,10 @@ function ExpenseModal({
     expense
       ? {
         title: expense.title,
-        issueType: expense.issueType ?? expense.type ?? "",
-        amount: Number(expense.amount),
+        // Normalised to lowercase so it matches the <option> values
+        // (the payload is uppercased again on submit).
+        issueType: (expense.issueType ?? expense.type ?? "").toLowerCase(),
+        amount: expense.amount === undefined || expense.amount === null ? "" : String(expense.amount),
         date: inputDate(expense.date),
         notes: expense.notes ?? "",
         receipt: null,
@@ -321,7 +299,7 @@ function ExpenseModal({
 
     const amount = Number(form.amount);
 
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (!form.amount.trim() || !Number.isFinite(amount) || amount <= 0) {
       setError("Amount must be greater than zero");
       return;
     }
@@ -389,8 +367,10 @@ function ExpenseModal({
                 <div className="relative">
                   <select required value={form.issueType} onChange={(event) => change("issueType", event.target.value)} className={`w-full appearance-none rounded-lg border pr-12 ${controlClass}`}>
                     <option value="" disabled>Select type</option>
-                    {form.issueType && !["security", "diesel", "power", "water", "cleaning", "repair", "others"].includes(form.issueType) && <option value={form.issueType}>{form.issueType}</option>}
-                    <option value="security">Security</option><option value="diesel">Diesel</option><option value="power">Power</option><option value="water">Water</option><option value="cleaning">Cleaning</option><option value="repair">Repair</option><option value="others">Others</option>
+                    {form.issueType && !ISSUE_TYPES.includes(form.issueType) && <option value={form.issueType}>{form.issueType}</option>}
+                    {ISSUE_TYPES.map((type) => (
+                      <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
+                    ))}
                   </select>
                   {selectArrow}
                 </div>
@@ -424,7 +404,7 @@ function ExpenseModal({
                 </div>
               </Field>
               <Field label="Amount">
-                <Input required type="number" min="0.01" step="0.01" value={form.amount} onChange={(event) => change("amount", Number(event.target.value))} className={controlClass} />
+                <Input required type="number" min="0.01" step="0.01" value={form.amount} onChange={(event) => change("amount", event.target.value)} className={controlClass} />
               </Field>
             </div>
             <Field label="Receipt">
@@ -502,15 +482,9 @@ function ExpenseModal({
                   Select an issue type
                 </option>
 
-                <option value="security">SECURITY</option>
-                <option value="diesel">DIESEL</option>
-                <option value="power">POWER</option>
-                <option value="water">WATER</option>
-                <option value="cleaning">CLEANING</option>
-                <option value="repair">REPAIRr</option>
-                <option value="others">OTHERS</option>
-
-                {/* Add other issue types supported by your backend here. */}
+                {ISSUE_TYPES.map((type) => (
+                  <option key={type} value={type}>{type.toUpperCase()}</option>
+                ))}
               </select>
             </label>
 
@@ -523,7 +497,7 @@ function ExpenseModal({
                   min="0.01"
                   step="0.01"
                   value={form.amount}
-                  onChange={(e) => change("amount", Number(e.target.value))}
+                  onChange={(e) => change("amount", e.target.value)}
                   className={inputClass}
                 />
               </label>

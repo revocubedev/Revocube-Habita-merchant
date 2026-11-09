@@ -1,11 +1,18 @@
 
-import { useState, useEffect } from 'react';
-import { Search, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2, Eye } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import { CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
-import { mockMembers } from '@/lib/mockData';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Modal, { Field, inputCls } from '@/components/ui/Modal';
+import { type MemberInput, useCreateMember, useGetMembers } from '@/api/api_controllers/members';
+import { useGetProperties } from '@/api/api_controllers/property';
+import { useGetUnits } from '@/api/api_controllers/unitController';
+
+const emptyMember: MemberInput = { firstName: '', lastName: '', email: '', phoneNumber: '', address: '', propertyId: '', unitId: '' };
 
 const Members = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,13 +21,17 @@ const Members = () => {
   const [visibleColumns, setVisibleColumns] = useState(['Member Name', 'Phone Number', 'Address', 'Property', 'Unit', 'Actions']);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [form, setForm] = useState<MemberInput>(emptyMember);
+  const [formError, setFormError] = useState('');
+  const { data, isLoading, isError } = useGetMembers({ page: currentPage, perPage: pageSize, search: searchQuery });
+  const { createMember, isLoading: isCreating } = useCreateMember();
+  const { data: propertiesData } = useGetProperties({ page: 1, perPage: 100, enabled: createOpen });
+  const { list: unitsList } = useGetUnits({ page: 1, perPage: 100 });
+  const properties = propertiesData?.data ?? [];
+  const units = useMemo(() => (unitsList?.items ?? []).filter((unit) => !form.propertyId || unit.propertyId === form.propertyId), [unitsList?.items, form.propertyId]);
 
-  const filteredMembers = mockMembers.filter((member) =>
-    member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.property.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const currentMembers = data?.data ?? [];
 
   const columns = [
     { id: 'Member Name', label: 'Member Name' },
@@ -31,10 +42,7 @@ const Members = () => {
     { id: 'Actions', label: 'Actions' },
   ];
 
-  const totalPages = Math.ceil(filteredMembers.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const currentMembers = filteredMembers.slice(startIndex, endIndex);
+  const totalPages = Math.max(1, data?.meta?.totalPages ?? 1);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -49,27 +57,45 @@ const Members = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!createOpen) return;
+    setForm(emptyMember);
+    setFormError('');
+  }, [createOpen]);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setFormError('');
+    try {
+      await createMember(form);
+      setCreateOpen(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Could not create member.');
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 px-1 pb-8" style={{ fontFamily: 'Poppins, sans-serif' }}>
       {/* Section Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-[16px] font-display font-medium text-foreground" style={{ fontFamily: 'Poppins', fontWeight: 500, color: '#4c4c4c' }}>
           Members List
         </h2>
+        <Button onClick={() => setCreateOpen(true)} leftIcon={<img src="/assets/plus.svg" alt="" width={16} height={16} />}>
+          Create Member
+        </Button>
       </div>
 
-      {/* Table Toolbar */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 max-w-sm relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            placeholder="Search by name..."
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-brand-text/20 transition-colors"
-            style={{ fontFamily: 'Poppins', borderColor: '#e3e3e3' }}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+      <Card className="overflow-visible border-[#eaeaea] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]" style={{ borderRadius: '10px' }}>
+        <CardContent className="p-0">
+          <div className="flex flex-wrap items-center gap-3 px-6 pt-6">
+            <Input
+              placeholder="Search by name..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              leftIcon={<img src="/assets/search.svg" alt="" width={18} height={18} />}
+              className="h-11 w-[226px] border-[#eaeaea] bg-white text-sm placeholder:text-[#a1a1a1]"
+            />
 
         {/* Column Visibility Dropdown */}
         <div className="relative column-menu-container">
@@ -78,7 +104,6 @@ const Members = () => {
             className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-card hover:bg-muted transition-colors"
             style={{ fontFamily: 'Poppins', borderRadius: '8px', borderColor: '#e3e3e3' }}
           >
-            <FileSpreadsheet className="w-4 h-4" />
             Column Visibility
             <ChevronDown className="w-4 h-4" />
           </button>
@@ -113,7 +138,6 @@ const Members = () => {
             className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-card hover:bg-muted transition-colors"
             style={{ fontFamily: 'Poppins', borderRadius: '8px', borderColor: '#e3e3e3' }}
           >
-            <FileText className="w-4 h-4" />
             Export
             <ChevronDown className="w-4 h-4" />
           </button>
@@ -131,67 +155,63 @@ const Members = () => {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Data Table */}
-      <Card 
-        className="bg-card border border-border"
-        style={{ 
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-        }}
-      >
-        <CardContent className="p-0">
-          <Table>
+          </div>
+          <div className="mt-6 border-y border-[#eaeaea]">
+            <Table className="min-w-[940px]">
             <TableHeader>
               <TableRow>
                 {columns.filter(col => visibleColumns.includes(col.id)).map((col) => (
-                  <TableHead key={col.id} className="text-sm font-medium">
+                  <TableHead key={col.id} className="h-11 px-6 text-sm font-semibold text-[#4c4c4c]">
                     {col.label}
                   </TableHead>
                 ))}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentMembers.map((member) => (
-                <TableRow key={member.id}>
+              {(isLoading || isError || currentMembers.length === 0) && (
+                <TableRow><TableCell colSpan={columns.length} className="py-12 text-center text-[#727272]">
+                  {isLoading ? 'Loading members...' : isError ? 'Could not load members.' : 'No members found.'}
+                </TableCell></TableRow>
+              )}
+              {!isLoading && currentMembers.map((member) => (
+                <TableRow key={member.id} className="h-16 hover:bg-transparent">
                   {visibleColumns.includes('Member Name') && (
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                          {member.name.charAt(0)}
+                          {(member.firstName ?? member.name ?? '?').charAt(0).toUpperCase()}
                         </div>
-                        {member.name}
+                        {member.name ?? (`${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || '—')}
                       </div>
                     </TableCell>
                   )}
                   {visibleColumns.includes('Phone Number') && (
-                    <TableCell className="text-muted-foreground">{member.phone}</TableCell>
+                    <TableCell className="px-6 text-[#5f5f5f]">{member.phoneNumber ?? member.phone ?? '—'}</TableCell>
                   )}
                   {visibleColumns.includes('Address') && (
-                    <TableCell className="text-muted-foreground">{member.address}</TableCell>
+                    <TableCell className="px-6 text-[#5f5f5f]">{member.address ?? '—'}</TableCell>
                   )}
                   {visibleColumns.includes('Property') && (
-                    <TableCell className="text-muted-foreground">{member.property}</TableCell>
+                    <TableCell className="px-6 text-[#5f5f5f]">{typeof member.property === 'object' ? member.property?.name ?? '—' : member.property ?? '—'}</TableCell>
                   )}
                   {visibleColumns.includes('Unit') && (
-                    <TableCell className="text-muted-foreground">{member.unit}</TableCell>
+                    <TableCell className="px-6 text-[#5f5f5f]">{typeof member.unit === 'object' ? member.unit?.name ?? '—' : member.unit ?? '—'}</TableCell>
                   )}
                   {visibleColumns.includes('Actions') && (
                     <TableCell className="text-right">
-                      <RowActionsMenu>
+                    <RowActionsMenu triggerIcon={<img src="/assets/ellipsis.svg" alt="Open member actions" width={18} height={18} />}>
                         {(close) => (
                           <>
-                            <RowAction onClick={() => { close(); }}>
-                              <Eye className="w-4 h-4" />
+                            <RowAction onClick={close}>
+                              <img src="/assets/view.svg" alt="" width={16} height={16} />
                               View Details
                             </RowAction>
-                            <RowAction onClick={() => { close(); }}>
-                              <Edit className="w-4 h-4" />
+                            <RowAction onClick={close}>
+                              <img src="/assets/edit.svg" alt="" width={16} height={16} />
                               Edit
                             </RowAction>
-                            <RowAction danger onClick={() => { close(); }}>
-                              <Trash2 className="w-4 h-4" />
+                            <RowAction danger onClick={close}>
+                              <img src="/assets/delete.svg" alt="" width={16} height={16} />
                               Delete
                             </RowAction>
                           </>
@@ -202,7 +222,8 @@ const Members = () => {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -283,6 +304,28 @@ const Members = () => {
           </button>
         </div>
       </div>
+
+      <Modal isOpen={createOpen} onClose={() => !isCreating && setCreateOpen(false)} title="Create Member" presentation="drawer" bodyClassName="px-8 py-7">
+        <form onSubmit={submit} className="space-y-5">
+          <div><h3 className="text-base font-medium text-[#393939]">Member Details</h3><p className="mt-1 text-sm text-[#727272]">Enter the member’s contact and residence details.</p></div>
+          {formError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{formError}</p>}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <Field label="First Name"><input required className={inputCls} value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} placeholder="Enter first name" /></Field>
+            <Field label="Last Name"><input required className={inputCls} value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} placeholder="Enter last name" /></Field>
+          </div>
+          <Field label="Email Address"><input required type="email" className={inputCls} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Enter email address" /></Field>
+          <Field label="Phone Number"><input required type="tel" className={inputCls} value={form.phoneNumber} onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })} placeholder="Enter phone number" /></Field>
+          <Field label="Address"><textarea required className={`${inputCls} min-h-24 resize-none`} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Enter address" /></Field>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <Field label="Property (optional)"><select className={inputCls} value={form.propertyId} onChange={(e) => setForm({ ...form, propertyId: e.target.value, unitId: '' })}><option value="">Select property</option>{properties.map((property) => <option key={property.id} value={property.id}>{property.name ?? 'Unnamed property'}</option>)}</select></Field>
+            <Field label="Unit (optional)"><select className={inputCls} value={form.unitId} onChange={(e) => setForm({ ...form, unitId: e.target.value })}><option value="">Select unit</option>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}</select></Field>
+          </div>
+          <div className="flex justify-end gap-3 border-t border-[#eaeaea] pt-5">
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={isCreating}>Cancel</Button>
+            <Button type="submit" isLoading={isCreating}>Create Member</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

@@ -44,7 +44,6 @@ const Modal = ({
   size = 'md',
   showCloseButton = true,
   align = 'center',
-  bodyClassName = 'px-8 py-6',
   presentation = 'modal',
   closeIcon,
   bodyClassName = 'px-6 py-5',
@@ -107,9 +106,7 @@ const Modal = ({
       className={cn(
         'fixed inset-0 z-[100] flex overflow-y-auto',
         presentation === 'drawer' ? 'justify-end' : 'justify-center px-6',
-        presentation === 'drawer' ? 'items-start' : align === 'center' ? 'items-center py-10' : 'items-start py-16'
-        'fixed inset-0 z-[100] flex justify-center overflow-y-auto px-6',
-        align === 'center' ? 'items-center py-6' : 'items-start py-10'
+        presentation === 'drawer' ? 'items-start' : align === 'center' ? 'items-center py-6' : 'items-start py-10'
       )}
       style={{ fontFamily: 'Poppins, sans-serif', backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
       onMouseDown={(e) => {
@@ -119,16 +116,11 @@ const Modal = ({
       aria-modal="true"
     >
       <div
-        className={cn('w-full bg-card text-card-foreground shadow-lg', presentation === 'drawer' ? 'h-dvh max-w-[622px] overflow-y-auto' : ['rounded-2xl border border-border', sizes[size]])}
+        className={cn('w-full flex flex-col bg-card text-card-foreground shadow-lg', presentation === 'drawer' ? 'h-dvh max-w-[622px]' : ['max-h-[calc(100vh-3rem)] rounded-2xl border border-border', sizes[size]])}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className={cn('flex items-center justify-between px-8 border-b border-border', presentation === 'drawer' ? 'h-[50px] border-[#eaeaea]' : 'py-5')}>
+        <div className={cn('flex items-center justify-between border-b border-border shrink-0', presentation === 'drawer' ? 'h-[50px] px-8 border-[#eaeaea]' : 'px-6 py-4')}>
           <h2 className={cn('text-foreground', presentation === 'drawer' ? 'text-sm font-medium' : 'font-semibold text-[16px]')}>{title}</h2>
-        className={cn('w-full max-h-[calc(100vh-3rem)] flex flex-col bg-card text-card-foreground rounded-2xl border border-border shadow-lg', sizes[size])}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-          <h2 className="font-semibold text-[16px] text-foreground">{title}</h2>
           {showCloseButton && (
             <button
               type="button"
