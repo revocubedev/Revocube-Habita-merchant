@@ -60,8 +60,17 @@ const UnitFormModal = ({ isOpen, onClose, unit }: { isOpen: boolean; onClose: ()
     : properties;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Edit Unit' : 'Create Unit'} size="lg">
-      <form onSubmit={submit} className="grid grid-cols-2 gap-x-4 gap-y-3">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isEdit ? 'Edit Unit' : 'Create Unit'}
+      variant="drawer"
+      bodyClassName="px-6 pt-5"
+    >
+      <form
+        onSubmit={submit}
+        className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 min-h-full content-start"
+      >
         <Field label="Property">
           {propOptions.length > 0 ? (
             <select className={inputCls} value={form.propertyId} onChange={(e) => set('propertyId', e.target.value)} required>
@@ -75,7 +84,7 @@ const UnitFormModal = ({ isOpen, onClose, unit }: { isOpen: boolean; onClose: ()
         <Field label="Unit Name">
           <input className={inputCls} placeholder="e.g. 1A" value={form.name} onChange={(e) => set('name', e.target.value)} required />
         </Field>
-        <div className="col-span-2 grid grid-cols-3 gap-4">
+        <div className="sm:col-span-2 grid grid-cols-3 gap-4">
           <Field label="Bedrooms"><input {...num('bedrooms')} /></Field>
           <Field label="Kitchens"><input {...num('kitchens')} /></Field>
           <Field label="Bathrooms"><input {...num('bathrooms')} /></Field>
@@ -100,12 +109,28 @@ const UnitFormModal = ({ isOpen, onClose, unit }: { isOpen: boolean; onClose: ()
         </Field>
         <Field label="Late Fee Amount (₦)"><input {...num('lateFeeAmount')} /></Field>
         <Field label="Incident Receipt Amount (₦)"><input {...num('incidentReceiptAmount')} /></Field>
-        <Field label="Notes" className="col-span-2">
-          <textarea className={`${inputCls} min-h-[72px]`} placeholder="Enter notes" value={form.notes} onChange={(e) => set('notes', e.target.value)} />
+        <Field label="Notes" className="sm:col-span-2">
+          <textarea
+            className={`${inputCls} min-h-[120px]`}
+            placeholder="Enter notes"
+            value={form.notes}
+            onChange={(e) => set('notes', e.target.value)}
+          />
         </Field>
-        <div className="col-span-2 flex justify-end gap-3 pt-3 sticky bottom-0 bg-card -mb-5 pb-5">
-          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-lg text-sm border border-border">Cancel</button>
-          <button type="submit" disabled={loading} className="px-6 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50" style={{ backgroundColor: '#f30100' }}>
+        <div className="sm:col-span-2 flex justify-end gap-3 py-4 mt-auto sticky bottom-0 bg-card border-t border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2.5 rounded-lg text-sm border border-border"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-6 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+            style={{ backgroundColor: '#f30100' }}
+          >
             {loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Unit'}
           </button>
         </div>

@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { ThemeProvider, useTheme } from '@/lib/theme';
@@ -29,7 +30,7 @@ import Management from '@/pages/management';
 import Users from '@/pages/management/Users';
 import Roles from '@/pages/management/Roles';
 import { Toaster } from 'sonner';
-import LoggedHistory from './pages/management/LoggedHistory';
+import { estatePath, getDefaultEstateCode, getStoredEstateCodes } from '@/lib/estateRoutes';
 
 // Query Client Configuration
 const queryClient = new QueryClient({
@@ -48,8 +49,61 @@ const queryClient = new QueryClient({
 // Protected route wrapper
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
+  const { estateCode } = useParams();
+  const location = useLocation();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const defaultCode = getDefaultEstateCode();
+  if (!defaultCode) return <Navigate to="/login" replace />;
+  const legacySections = new Set([
+    'dashboard',
+    'management',
+    'members',
+    'maintainers',
+    'real-estate',
+    'maintenance',
+    'finance',
+    'notice-board',
+    'visitors',
+    'estate-rules',
+    'types',
+    'email-notification',
+    'settings',
+  ]);
+
+  if (estateCode && legacySections.has(estateCode)) {
+    const redirect = `${estatePath(defaultCode, location.pathname)}${location.search}${location.hash}`;
+    return <Navigate to={redirect} replace />;
+  }
+
+  const codes = getStoredEstateCodes();
+  const isAllowed = estateCode && (codes.length
+    ? codes.includes(estateCode)
+    : estateCode === defaultCode);
+
+  if (!isAllowed) {
+    return <Navigate to={estatePath(defaultCode)} replace />;
+  }
+
+  return <ActiveEstate code={estateCode}>{children}</ActiveEstate>;
+}
+
+function ActiveEstate({ code, children }: { code: string; children: React.ReactNode }) {
+  useEffect(() => {
+    localStorage.setItem('code', code);
+  }, [code]);
   return <>{children}</>;
+}
+
+function EstateFallback() {
+  const { estateCode = '' } = useParams();
+  return <Navigate to={estatePath(estateCode)} replace />;
+}
+
+function HomeRedirect() {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const code = getDefaultEstateCode();
+  return <Navigate to={code ? estatePath(code) : '/login'} replace />;
 }
 
 // App with providers
@@ -61,8 +115,9 @@ function AppContent() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/" element={<HomeRedirect />} />
       <Route
-        path="/"
+        path="/:estateCode"
         element={
           <RequireAuth>
             <PageLayout theme={theme} toggleTheme={toggleTheme} />
@@ -99,7 +154,7 @@ function AppContent() {
         <Route path="types" element={<Types />} />
         <Route path="email-notification" element={<EmailNotification />} />
         <Route path="settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<EstateFallback />} />
       </Route>
     </Routes>
   );

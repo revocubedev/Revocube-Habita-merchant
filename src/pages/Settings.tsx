@@ -8,7 +8,7 @@ import PasswordTab from '@/components/portal/PasswordTab';
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('User Profile');
   const [fullName, setFullName] = useState('');
-  const [currentPage] = useState(1);
+  // const [currentPage] = useState(1);
   const [email, setEmail] = useState('');
   const [adminRole, setAdminRole] = useState(""); // selected role id
 
