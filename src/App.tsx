@@ -129,7 +129,7 @@ function AppContent() {
           <Route index element={<Users />} />
           <Route path="users" element={<Users />} />
           <Route path="roles" element={<Roles />} />
-          <Route path="logs" element={<Placeholder title="Logged History" />} />
+          <Route path="logs" element={<LoggedHistory />} />
         </Route>
         <Route path="members" element={<Members />} />
         <Route path="maintainers" element={<Maintainers />} />
