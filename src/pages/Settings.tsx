@@ -60,11 +60,11 @@ const Settings = () => {
     { id: 'User Profile', label: 'User Profile', description: 'User Account Profile Settings', icon: User },
     { id: 'Admin Management', label: 'Admin Management', description: 'Admin Settings', icon: Shield },
     { id: 'Password', label: 'Password', description: 'Password Settings', icon: Lock },
-    { id: 'General', label: 'General', description: 'General Settings', icon: SettingsIcon },
+    // { id: 'General', label: 'General', description: 'General Settings', icon: SettingsIcon },
     { id: 'Company', label: 'Company', description: 'Platform Settings', icon: Building },
-    { id: 'Email', label: 'Email', description: 'Email SMTP Settings', icon: Mail },
+    // { id: 'Email', label: 'Email', description: 'Email SMTP Settings', icon: Mail },
     { id: 'Payment', label: 'Payment', description: 'Payment Settings', icon: CreditCard },
-    { id: 'Site SEO', label: 'Site SEO', description: 'Site SEO Settings', icon: Search },
+    // { id: 'Site SEO', label: 'Site SEO', description: 'Site SEO Settings', icon: Search },
   ];
 
   return (
