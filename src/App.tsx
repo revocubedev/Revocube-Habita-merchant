@@ -8,7 +8,6 @@ import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import VerifyEmail from '@/pages/VerifyEmail';
 import Dashboard from '@/pages/Dashboard';
-import Placeholder from '@/pages/Placeholder';
 import Members from '@/pages/Members';
 import Maintainers from '@/pages/Maintainers';
 import Maintenance from '@/pages/Maintenance';
@@ -31,6 +30,8 @@ import Users from '@/pages/management/Users';
 import Roles from '@/pages/management/Roles';
 import { Toaster } from 'sonner';
 import { estatePath, getDefaultEstateCode, getStoredEstateCodes } from '@/lib/estateRoutes';
+import LoggedHistory from './pages/management/LoggedHistory';
+import AdminLogin from './pages/AdminLogin';
 
 // Query Client Configuration
 const queryClient = new QueryClient({
@@ -112,6 +113,7 @@ function AppContent() {
 
   return (
     <Routes>
+      <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
