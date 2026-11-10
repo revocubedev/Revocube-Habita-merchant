@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Upload, FileText, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
+import { estateRuleUrl, useGetEstateRules, useUploadEstateRules } from '@/api/api_controllers/estateRules';
 
 // Set worker for PDF.js
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -12,8 +13,26 @@ const EstateRules = () => {
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.0);
   const [pdfFile, setPdfFile] = useState<string | null>(null);
-  const [uploadedFileName, setUploadedFileName] = useState<string>('Rules and Regulations.pdf');
+  const [uploadedFileName, setUploadedFileName] = useState<string>('');
+  const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlRef = useRef<string | null>(null);
+  const { data: rulesData, isLoading: isLoadingRules, isError: isRulesError } = useGetEstateRules();
+  const { uploadEstateRules, isLoading: isUploading } = useUploadEstateRules();
+
+  console.log('rulesData', rulesData);
+
+  useEffect(() => {
+    const rule = rulesData?.data?.[0];
+    const url = estateRuleUrl(rule);
+    if (!url || objectUrlRef.current) return;
+    setPdfFile(url);
+    setUploadedFileName(rule?.name ?? url.split('/').pop()?.split('?')[0] ?? 'Estate Rules.pdf');
+  }, [rulesData]);
+
+  useEffect(() => () => {
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+  }, []);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -23,13 +42,24 @@ const EstateRules = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type === 'application/pdf') {
-      const fileUrl = URL.createObjectURL(file);
-      setPdfFile(fileUrl);
+    event.target.value = '';
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      setUploadError('Please select a PDF document.');
+      return;
+    }
+    setUploadError('');
+    try {
+      await uploadEstateRules(file);
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = URL.createObjectURL(file);
+      setPdfFile(objectUrlRef.current);
       setUploadedFileName(file.name);
       setPageNumber(1);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Could not upload the rules document.');
     }
   };
 
@@ -63,6 +93,7 @@ const EstateRules = () => {
         </h2>
         <button
           onClick={handleUploadClick}
+          disabled={isUploading}
           className="text-sm text-white transition-colors flex items-center gap-2 px-4 py-2"
           style={{ 
             fontFamily: 'Poppins', 
@@ -72,7 +103,7 @@ const EstateRules = () => {
           }}
         >
           <Upload className="w-4 h-4" />
-          Upload New Rules
+          {isUploading ? 'Uploading...' : 'Upload New Rules'}
         </button>
         <input
           ref={fileInputRef}
@@ -82,6 +113,8 @@ const EstateRules = () => {
           className="hidden"
         />
       </div>
+
+      {uploadError && <p role="alert" className="text-sm text-red-600">{uploadError}</p>}
 
       {/* PDF Viewer Container */}
       <div 
@@ -198,13 +231,14 @@ const EstateRules = () => {
           <div className="flex flex-col items-center justify-center bg-[#1e1e1e] rounded-lg" style={{ minHeight: '560px' }}>
             <FileText className="w-16 h-16 text-gray-600 mb-4" />
             <p className="text-white text-lg mb-2" style={{ fontFamily: 'Poppins' }}>
-              No estate rules document uploaded
+              {isLoadingRules ? 'Loading estate rules...' : isRulesError ? 'Could not load estate rules' : 'No estate rules document uploaded'}
             </p>
             <p className="text-gray-400 text-sm mb-4" style={{ fontFamily: 'Poppins' }}>
-              Upload a PDF file to display the estate rules
+              {isRulesError ? 'Please try again later.' : 'Upload a PDF file to display the estate rules'}
             </p>
             <button
               onClick={handleUploadClick}
+              disabled={isUploading}
               className="text-white transition-colors flex items-center gap-2 px-4 py-2"
               style={{ 
                 fontFamily: 'Poppins', 
@@ -214,7 +248,7 @@ const EstateRules = () => {
               }}
             >
               <Upload className="w-4 h-4" />
-              Upload PDF
+              {isUploading ? 'Uploading...' : 'Upload PDF'}
             </button>
           </div>
         )}
