@@ -11,6 +11,7 @@ interface Props {
   method?: "POST" | "PUT" | "PATCH" | "DELETE";
   isAuth?: boolean;
   isCode?: boolean;
+  estateCode?: string;
   showSuccessToastt?: boolean;
   successMessage?: string;
   contentType?: string;
@@ -38,13 +39,15 @@ const useApiManager = ({
   method = "POST",
   isAuth = false,
   isCode = false,
+  estateCode: providedEstateCode,
   showSuccessToastt = true,
   contentType = "application/json",
   validateResponse,
   successMessage,
-}: Props) => {
+}: Props) =>  {
   const queryClient = useQueryClient();
-  const { estateCode } = useParams();
+  const { estateCode: routeEstateCode } = useParams();
+  const estateCode = providedEstateCode || routeEstateCode;
   const axiosInstance = isAuth ? AxiosWithToken : Axios;
   const [statusCode, setStatusCode] = useState<number | null>(null);
 
