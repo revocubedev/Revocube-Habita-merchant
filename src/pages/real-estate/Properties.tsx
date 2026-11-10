@@ -306,8 +306,8 @@ const Properties = () => {
                 <div className="absolute right-3 top-2">
                   <RowActionsMenu label={`Actions for ${name}`} panelWidth={171} triggerClassName="h-[30px] w-[30px] rounded-full" triggerIcon={<PropertyIcon name="ellipsis" size={24} />} panelClassName="flex flex-col gap-2 rounded-[5px] border-[0.5px] bg-white px-3 py-[15px] shadow-[0_10px_20px_rgba(0,0,0,0.05)]" panelStyle={{ borderRadius: 5, borderColor: '#eaecf0' }}>
                     {(close) => <>
-                      <RowAction className="h-9 shrink-0 rounded-[5px] px-4 py-2 text-sm font-normal leading-5 text-[#5f5f5f]" onClick={() => { close(); openProperty('view', property.id); }}><PropertyIcon name="view" size={14} />View Property</RowAction>
-                      <RowAction className="h-9 shrink-0 rounded-[5px] px-4 py-2 text-sm font-normal leading-5 text-[#5f5f5f]" onClick={() => { close(); openProperty('edit', property.id); }}><PropertyIcon name="edit" size={14} />Edit Property</RowAction>
+                      <RowAction className="h-9 shrink-0 rounded-[5px] px-4 py-2 text-sm font-normal leading-5 text-[#5f5f5f]" onClick={() => { close(); openProperty('view', property.id); }}><PropertyIcon name="view" size={14} />View</RowAction>
+                      <RowAction className="h-9 shrink-0 rounded-[5px] px-4 py-2 text-sm font-normal leading-5 text-[#5f5f5f]" onClick={() => { close(); openProperty('edit', property.id); }}><PropertyIcon name="edit" size={14} />Edit</RowAction>
                       <RowAction className="h-9 shrink-0 rounded-[5px] bg-[#ffedee] px-4 py-2 text-sm font-normal leading-5 text-[#ff383c] hover:bg-[#ffdde0]" onClick={() => { close(); setDeleting(property); }}><PropertyIcon name="delete" size={14} />Delete</RowAction>
                     </>}
                   </RowActionsMenu>
