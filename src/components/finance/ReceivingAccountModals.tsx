@@ -4,6 +4,8 @@ import Modal, { Field, inputCls } from '@/components/ui/Modal';
 import {
   useCreateReceivingAccount,
   useGetReceivingAccounts,
+  useGetReceivingBanks,
+  useResolveBankAccount,
   ReceivingAccount,
 } from '@/api/api_controllers/receivingAccountController';
 
@@ -20,28 +22,36 @@ export const AddBankAccountModal = ({
   const { createAccount, isLoading } = useCreateReceivingAccount();
   const [form, setForm] = useState({
     accountNumber: '',
-    accountName: '',
-    bankName: '',
+    bankCode: '',
   });
+  const [shouldResolve, setShouldResolve] = useState(false);
+  const { banks, isLoading: banksLoading, isError: banksError } = useGetReceivingBanks(isOpen);
+  const {
+    resolvedAccount,
+    isFetching: resolving,
+    isError: resolveError,
+    isSuccess: resolveSucceeded,
+  } = useResolveBankAccount(form.accountNumber, form.bankCode, isOpen && shouldResolve);
 
   useEffect(() => {
-    if (isOpen) setForm({ accountNumber: '', accountName: '', bankName: '' });
+    if (isOpen) {
+      setForm({ accountNumber: '', bankCode: '' });
+      setShouldResolve(false);
+    }
   }, [isOpen]);
 
-  const valid =
-    /^\d{10}$/.test(form.accountNumber) &&
-    form.accountName.trim() &&
-    form.bankName.trim();
+  const valid = /^\d{10}$/.test(form.accountNumber) && !!form.bankCode;
+  const confirmed =
+    shouldResolve &&
+    resolveSucceeded &&
+    !resolving &&
+    resolvedAccount?.accountNumber === form.accountNumber;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valid) return;
+    if (!valid || !confirmed) return;
     try {
-      const res = await createAccount({
-        accountNumber: form.accountNumber,
-        accountName: form.accountName.trim(),
-        bankName: form.bankName.trim(),
-      });
+      const res = await createAccount(form);
       onCreated?.(res?.data);
       onClose();
     } catch {
@@ -59,32 +69,50 @@ export const AddBankAccountModal = ({
             inputMode="numeric"
             maxLength={10}
             value={form.accountNumber}
-            onChange={(e) => setForm({ ...form, accountNumber: e.target.value.replace(/\D/g, '') })}
+            onChange={(e) => {
+              setForm({ ...form, accountNumber: e.target.value.replace(/\D/g, '') });
+              setShouldResolve(false);
+            }}
           />
           {form.accountNumber && form.accountNumber.length !== 10 && (
             <span className="text-xs text-destructive mt-1 block">Account number must be 10 digits</span>
           )}
         </Field>
         <Field label="Bank">
-          <input
+          <select
             className={inputCls}
-            placeholder="Bank Name"
-            value={form.bankName}
-            onChange={(e) => setForm({ ...form, bankName: e.target.value })}
-          />
+            value={form.bankCode}
+            onChange={(e) => {
+              setForm({ ...form, bankCode: e.target.value });
+              setShouldResolve(false);
+            }}
+            disabled={banksLoading}
+          >
+            <option value="">{banksLoading ? 'Loading banks...' : 'Select bank'}</option>
+            {banks.map((bank) => (
+              <option key={bank.code} value={bank.code}>{bank.name}</option>
+            ))}
+          </select>
         </Field>
-        <Field label="Account Name">
-          <input
-            className={inputCls}
-            placeholder="Account holder name"
-            value={form.accountName}
-            onChange={(e) => setForm({ ...form, accountName: e.target.value })}
-          />
-        </Field>
+        {banksError && <p className="text-sm text-destructive">Could not load banks.</p>}
+        <button
+          type="button"
+          disabled={!valid || resolving}
+          onClick={() => setShouldResolve(true)}
+          className="px-4 py-2 rounded-lg border border-border text-sm disabled:opacity-50"
+        >
+          {resolving ? 'Verifying...' : 'Verify account'}
+        </button>
+        {resolveError && shouldResolve && (
+          <p className="text-sm text-destructive">Could not verify this account.</p>
+        )}
+        {confirmed && (
+          <p className="text-sm text-foreground">Account name: {resolvedAccount.accountName}</p>
+        )}
         <div className="flex justify-end pt-4">
           <button
             type="submit"
-            disabled={!valid || isLoading}
+            disabled={!valid || !confirmed || isLoading}
             className="px-8 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50"
             style={{ backgroundColor: '#f30100' }}
           >

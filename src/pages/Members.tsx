@@ -1,14 +1,17 @@
 
 import { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Card from '@/components/ui/Card';
 import { CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
+import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useGetMembers } from '@/api/api_controllers/members';
 
 const Members = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -50,6 +53,9 @@ const Members = () => {
         <h2 className="text-[16px] font-display font-medium text-foreground" style={{ fontFamily: 'Poppins', fontWeight: 500, color: '#4c4c4c' }}>
           Members List
         </h2>
+        <Button variant="outline" onClick={() => navigate('join-requests')}>
+          Join Requests
+        </Button>
       </div>
 
       <Card className="overflow-visible border-[#eaeaea] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]" style={{ borderRadius: '10px' }}>

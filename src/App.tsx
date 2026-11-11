@@ -9,6 +9,7 @@ import Signup from '@/pages/Signup';
 import VerifyEmail from '@/pages/VerifyEmail';
 import Dashboard from '@/pages/Dashboard';
 import Members from '@/pages/Members';
+import JoinRequests from '@/components/members/JoinRequests';
 import Maintainers from '@/pages/Maintainers';
 import Maintenance from '@/pages/Maintenance';
 import Finance from '@/pages/finance';
@@ -134,6 +135,7 @@ function AppContent() {
           <Route path="logs" element={<LoggedHistory />} />
         </Route>
         <Route path="members" element={<Members />} />
+        <Route path="members/join-requests" element={<JoinRequests />} />
         <Route path="maintainers" element={<Maintainers />} />
         <Route path="real-estate" element={<RealEstate />}>
           <Route index element={<Properties />} />

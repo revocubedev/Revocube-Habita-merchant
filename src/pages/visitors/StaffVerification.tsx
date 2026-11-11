@@ -5,7 +5,15 @@ import Card from '@/components/ui/Card';
 import { CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
-import { mockVisitors } from '@/lib/mockData';
+import Modal from '@/components/ui/Modal';
+import {
+  useGetAdminStaff,
+  useGetAdminStaffById,
+  useUpdateStaffCodeStatus,
+  type StaffCodeStatus,
+} from '@/api/api_controllers/staffController';
+
+const showDate = (value?: string | null) => value ? new Date(value).toLocaleDateString() : '—';
 
 const StaffVerification = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -15,28 +23,45 @@ const StaffVerification = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [staffCode, setStaffCode] = useState('');
+  const [staffStatus, setStaffStatus] = useState<StaffCodeStatus>('CHECKED_IN');
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  const { staff, meta, isLoading: staffLoading, isError: staffError } = useGetAdminStaff();
+  const { staff: selectedStaff, isLoading: detailsLoading, isError: detailsError } =
+    useGetAdminStaffById(selectedStaffId);
+  const { updateStatus, isLoading: updatingStatus } = useUpdateStaffCodeStatus(staffCode);
 
-  const filteredVisitors = mockVisitors.filter((visitor) =>
-    visitor.visitor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    visitor.code.toLowerCase().includes(searchQuery.toLowerCase())
-  ).filter((visitor) => {
+  const submitStaffStatus = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!staffCode.trim()) return;
+    try {
+      await updateStatus(staffStatus);
+    } catch {
+      // The API manager displays the error.
+    }
+  };
+
+  const filteredStaff = staff.filter((person) =>
+    person.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    person.staffCode?.toLowerCase().includes(searchQuery.toLowerCase())
+  ).filter((person) => {
     if (statusFilter === 'All') return true;
-    return visitor.status === statusFilter;
+    return person.status === (statusFilter === 'Checked In' ? 'CHECKED_IN' : 'CHECKED_OUT');
   });
 
   const columns = [
     { id: 'Code', label: 'Code' },
-    { id: 'Visitor', label: 'Visitor' },
+    { id: 'Visitor', label: 'Staff' },
     { id: 'Check In', label: 'Check In' },
     { id: 'Check Out', label: 'Check Out' },
     { id: 'Status', label: 'Status' },
     { id: 'Actions', label: 'Actions' },
   ];
 
-  const totalPages = Math.ceil(filteredVisitors.length / pageSize);
+  const totalPages = Math.max(1, Math.ceil(filteredStaff.length / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const currentVisitors = filteredVisitors.slice(startIndex, endIndex);
+  const currentStaff = filteredStaff.slice(startIndex, endIndex);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -53,9 +78,9 @@ const StaffVerification = () => {
 
   const getStatusBadgeStyle = (status: string) => {
     switch (status) {
-      case 'Checked In':
+      case 'CHECKED_IN':
         return { backgroundColor: '#E5F9EC', color: '#27964F' };
-      case 'Checked Out':
+      case 'CHECKED_OUT':
         return { backgroundColor: '#F3F4F6', color: '#6B7280' };
       default:
         return { backgroundColor: '#f3f4f6', color: '#6b7280' };
@@ -73,8 +98,44 @@ const StaffVerification = () => {
 
       {/* Section Header */}
       <h2 className="text-[16px] font-display font-medium text-foreground" style={{ fontFamily: 'Poppins', fontWeight: 500, color: '#4c4c4c' }}>
-        Visitor List
+        Staff verification
       </h2>
+      {meta && meta.totalItems > staff.length && (
+        <p className="text-sm text-muted-foreground">
+          Showing {staff.length} of {meta.totalItems} staff records. More records may require API pagination.
+        </p>
+      )}
+
+      <form onSubmit={submitStaffStatus} className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4">
+        <label className="text-sm text-foreground">
+          Staff code
+          <input
+            className="mt-1 block rounded-lg border border-border bg-card px-3 py-2"
+            value={staffCode}
+            onChange={(event) => setStaffCode(event.target.value)}
+            placeholder="Enter staff code"
+            required
+          />
+        </label>
+        <label className="text-sm text-foreground">
+          Status
+          <select
+            className="mt-1 block rounded-lg border border-border bg-card px-3 py-2"
+            value={staffStatus}
+            onChange={(event) => setStaffStatus(event.target.value as StaffCodeStatus)}
+          >
+            <option value="CHECKED_IN">Check in</option>
+            <option value="CHECKED_OUT">Check out</option>
+          </select>
+        </label>
+        <button
+          type="submit"
+          disabled={updatingStatus || !staffCode.trim()}
+          className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+        >
+          {updatingStatus ? 'Updating...' : 'Update status'}
+        </button>
+      </form>
 
       {/* Data Table with Toolbar */}
       <Card 
@@ -139,7 +200,10 @@ const StaffVerification = () => {
             {/* Status Filter Dropdown */}
             <div className="relative">
               <button
-                onClick={() => setStatusFilter(statusFilter === 'All' ? 'Checked In' : 'All')}
+                onClick={() => {
+                  setStatusFilter(statusFilter === 'All' ? 'Checked In' : statusFilter === 'Checked In' ? 'Checked Out' : 'All');
+                  setCurrentPage(1);
+                }}
                 className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-card hover:bg-muted transition-colors"
                 style={{ fontFamily: 'Poppins', borderRadius: '8px', borderColor: '#e3e3e3' }}
               >
@@ -186,19 +250,19 @@ const StaffVerification = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentVisitors.map((visitor) => (
-                <TableRow key={visitor.id}>
+              {currentStaff.map((person) => (
+                <TableRow key={person.id}>
                   {visibleColumns.includes('Code') && (
-                    <TableCell className="font-medium">{visitor.code}</TableCell>
+                    <TableCell className="font-medium">{person.staffCode}</TableCell>
                   )}
                   {visibleColumns.includes('Visitor') && (
-                    <TableCell className="text-muted-foreground">{visitor.visitor}</TableCell>
+                    <TableCell className="text-muted-foreground">{person.fullName}</TableCell>
                   )}
                   {visibleColumns.includes('Check In') && (
-                    <TableCell className="text-muted-foreground">{visitor.checkIn}</TableCell>
+                    <TableCell className="text-muted-foreground">{showDate(person.checkInDate)}</TableCell>
                   )}
                   {visibleColumns.includes('Check Out') && (
-                    <TableCell className="text-muted-foreground">{visitor.checkOut || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">{showDate(person.checkOutDate)}</TableCell>
                   )}
                   {visibleColumns.includes('Status') && (
                     <TableCell>
@@ -206,17 +270,17 @@ const StaffVerification = () => {
                         className="px-2 py-1 rounded-full text-xs font-medium"
                         style={{
                           fontFamily: 'Poppins',
-                          ...getStatusBadgeStyle(visitor.status)
+                          ...getStatusBadgeStyle(person.status ?? '')
                         }}
                       >
-                        {visitor.status}
+                        {person.status?.replace('_', ' ') ?? '—'}
                       </span>
                     </TableCell>
                   )}
                   <TableCell className="text-right">
                     <RowActionsMenu>
                       {(close) => (
-                        <RowAction onClick={() => { close(); }}>
+                        <RowAction onClick={() => { setSelectedStaffId(person.id); close(); }}>
                           <Eye className="w-4 h-4" />
                           View details
                         </RowAction>
@@ -225,6 +289,13 @@ const StaffVerification = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {(staffLoading || staffError || filteredStaff.length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="text-center text-muted-foreground">
+                    {staffLoading ? 'Loading staff...' : staffError ? 'Could not load staff.' : 'No staff found.'}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -307,6 +378,30 @@ const StaffVerification = () => {
           </button>
         </div>
       </div>
+      <Modal
+        isOpen={!!selectedStaffId}
+        onClose={() => setSelectedStaffId(null)}
+        title="Staff details"
+      >
+        {detailsLoading && <p>Loading staff details...</p>}
+        {detailsError && <p className="text-destructive">Could not load staff details.</p>}
+        {selectedStaff && !detailsLoading && (
+          <dl className="grid grid-cols-2 gap-4 text-sm">
+            <div><dt className="text-muted-foreground">Name</dt><dd>{selectedStaff.fullName}</dd></div>
+            <div><dt className="text-muted-foreground">Code</dt><dd>{selectedStaff.staffCode}</dd></div>
+            <div><dt className="text-muted-foreground">Status</dt><dd>{selectedStaff.status ?? '—'}</dd></div>
+            <div><dt className="text-muted-foreground">Email</dt><dd>{selectedStaff.email ?? '—'}</dd></div>
+            <div><dt className="text-muted-foreground">Phone</dt><dd>{selectedStaff.phoneNumber ?? '—'}</dd></div>
+            <div><dt className="text-muted-foreground">Check in</dt><dd>{showDate(selectedStaff.checkInDate)}</dd></div>
+            <div><dt className="text-muted-foreground">Check out</dt><dd>{showDate(selectedStaff.checkOutDate)}</dd></div>
+            <div><dt className="text-muted-foreground">Check in time</dt><dd>{selectedStaff.checkInTime ? new Date(selectedStaff.checkInTime).toLocaleTimeString() : '—'}</dd></div>
+            <div><dt className="text-muted-foreground">Check out time</dt><dd>{selectedStaff.checkOutTime ? new Date(selectedStaff.checkOutTime).toLocaleTimeString() : '—'}</dd></div>
+            <div><dt className="text-muted-foreground">Description</dt><dd>{selectedStaff.description ?? '—'}</dd></div>
+            <div><dt className="text-muted-foreground">Visitors</dt><dd>{selectedStaff.numberOfVisitors ?? '—'}</dd></div>
+            <div><dt className="text-muted-foreground">Allowed days</dt><dd>{selectedStaff.allowedDays?.join(', ') ?? '—'}</dd></div>
+          </dl>
+        )}
+      </Modal>
     </div>
   );
 };
