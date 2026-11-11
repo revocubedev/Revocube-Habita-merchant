@@ -14,8 +14,17 @@ export interface ReceivingAccount {
 
 export interface ReceivingAccountFormValues {
   accountNumber: string;
+  bankCode: string;
+}
+
+export interface ReceivingBank {
+  name: string;
+  code: string;
+}
+
+export interface ResolvedBankAccount {
+  accountNumber: string;
   accountName: string;
-  bankName: string;
 }
 
 const QUERY_KEY = "get_receiving_accounts";
@@ -50,4 +59,40 @@ export const useCreateReceivingAccount = () => {
   const createAccount = (values: ReceivingAccountFormValues) => callApi(values);
 
   return { createAccount, isLoading };
+};
+
+export const useGetReceivingBanks = (enabled = true) => {
+  const query = useGetApiManager({
+    queryKey: ["get_receiving_banks"],
+    endpoint: "receive-payments/banks",
+    isAuth: true,
+    isCode: true,
+    enabled,
+  });
+
+  const banks: ReceivingBank[] = Array.isArray(query.data?.data)
+    ? query.data.data
+    : [];
+
+  return { ...query, banks };
+};
+
+export const useResolveBankAccount = (
+  accountNumber: string,
+  bankCode: string,
+  enabled: boolean,
+) => {
+  const query = useGetApiManager({
+    queryKey: ["resolve_bank_account", accountNumber, bankCode],
+    endpoint: "receive-payments/resolve",
+    params: { accountNumber, bankCode },
+    isAuth: true,
+    isCode: true,
+    enabled: enabled && /^\d{10}$/.test(accountNumber) && !!bankCode,
+  });
+
+  return {
+    ...query,
+    resolvedAccount: query.data?.data as ResolvedBankAccount | undefined,
+  };
 };

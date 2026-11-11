@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Card from '@/components/ui/Card';
 import { CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
@@ -15,6 +16,7 @@ import { useGetUnits } from '@/api/api_controllers/unitController';
 const emptyMember: MemberInput = { firstName: '', lastName: '', email: '', phoneNumber: '', address: '', propertyId: '', unitId: '' };
 
 const Members = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -24,7 +26,11 @@ const Members = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState<MemberInput>(emptyMember);
   const [formError, setFormError] = useState('');
-  const { data, isLoading, isError } = useGetMembers({ page: currentPage, perPage: pageSize, search: searchQuery });
+  const { data, isLoading, isError } = useGetMembers({
+    page: currentPage,
+    perPage: pageSize,
+    search: searchQuery,
+  });
   const { createMember, isLoading: isCreating } = useCreateMember();
   const { data: propertiesData } = useGetProperties({ page: 1, perPage: 100, enabled: createOpen });
   const { list: unitsList } = useGetUnits({ page: 1, perPage: 100 });
@@ -81,9 +87,14 @@ const Members = () => {
         <h2 className="text-[16px] font-display font-medium text-foreground" style={{ fontFamily: 'Poppins', fontWeight: 500, color: '#4c4c4c' }}>
           Members List
         </h2>
-        <Button onClick={() => setCreateOpen(true)} leftIcon={<img src="/assets/plus.svg" alt="" width={16} height={16} />}>
-          Create Member
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate('join-requests')}>
+            Join Requests
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} leftIcon={<img src="/assets/plus.svg" alt="" width={16} height={16} />}>
+            Create Member
+          </Button>
+        </div>
       </div>
 
       <Card className="overflow-visible border-[#eaeaea] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]" style={{ borderRadius: '10px' }}>

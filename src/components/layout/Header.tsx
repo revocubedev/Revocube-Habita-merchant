@@ -34,6 +34,7 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
     const path = location.pathname.slice(estatePath(estateCode).length) || '/';
     if (path === '/' || path === '/dashboard') return 'Dashboard';
     if (path === '/members') return 'Members';
+    if (path === '/members/join-requests') return 'Join Requests';
     if (path === '/maintainers') return 'Maintainers';
     if (path.startsWith('/management')) return 'Management';
     if (path.startsWith('/real-estate')) return 'Real Estate';
