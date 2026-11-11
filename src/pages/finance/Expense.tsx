@@ -38,7 +38,7 @@ const emptyForm = (): ExpenseForm => ({
   unit: "",
 });
 
-const ISSUE_TYPES = ["security", "diesel", "power", "water", "cleaning", "repair", "others"];
+const ISSUE_TYPES = ["security", "diesel", "power", "water", "cleaning", "repair", "other"];
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm disabled:opacity-60";

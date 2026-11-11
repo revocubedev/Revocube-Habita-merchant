@@ -1,4 +1,3 @@
-import useApiManager from "../useApiManager";
 import useGetApiManager from "../useGetApiManager";
 
 export interface Member {
@@ -15,16 +14,6 @@ export interface Member {
   property?: { id?: string; name?: string } | string | null;
   unit?: { id?: string; name?: string } | string | null;
   profileImage?: string | null;
-}
-
-export interface MemberInput {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
-  address: string;
-  propertyId?: string;
-  unitId?: string;
 }
 
 export interface MembersResponse {
@@ -87,34 +76,3 @@ export const useGetMembers = ({ page = 1, perPage = 10, search = "", enabled = t
   });
 };
 
-/** POST /:code/members/ */
-export const useCreateMember = () => {
-  const api = useApiManager({
-    endpoint: "members/",
-    method: "POST",
-    queryKey: [QUERY_KEY],
-    isAuth: true,
-    isCode: true,
-  });
-
-  const createMember = async (values: MemberInput): Promise<Member> => {
-    if (!estateCode()) throw new Error("Estate code is missing");
-    if (!values.firstName.trim() || !values.lastName.trim()) throw new Error("Member first and last names are required");
-    if (!values.email.trim()) throw new Error("Member email is required");
-    if (!values.phoneNumber.trim()) throw new Error("Member phone number is required");
-    if (!values.address.trim()) throw new Error("Member address is required");
-
-    const result = await api.callApi({
-      ...values,
-      firstName: values.firstName.trim(),
-      lastName: values.lastName.trim(),
-      email: values.email.trim(),
-      phoneNumber: values.phoneNumber.trim(),
-      address: values.address.trim(),
-    });
-    if (result.success === false) throw new Error(result.message || "Could not create member");
-    return result.data as Member;
-  };
-
-  return { ...api, createMember };
-};

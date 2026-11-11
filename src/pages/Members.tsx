@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Card from '@/components/ui/Card';
@@ -8,12 +8,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import Modal, { Field, inputCls } from '@/components/ui/Modal';
-import { type MemberInput, useCreateMember, useGetMembers } from '@/api/api_controllers/members';
-import { useGetProperties } from '@/api/api_controllers/property';
-import { useGetUnits } from '@/api/api_controllers/unitController';
-
-const emptyMember: MemberInput = { firstName: '', lastName: '', email: '', phoneNumber: '', address: '', propertyId: '', unitId: '' };
+import { useGetMembers } from '@/api/api_controllers/members';
 
 const Members = () => {
   const navigate = useNavigate();
@@ -23,19 +18,7 @@ const Members = () => {
   const [visibleColumns, setVisibleColumns] = useState(['Member Name', 'Phone Number', 'Address', 'Property', 'Unit', 'Actions']);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState<MemberInput>(emptyMember);
-  const [formError, setFormError] = useState('');
-  const { data, isLoading, isError } = useGetMembers({
-    page: currentPage,
-    perPage: pageSize,
-    search: searchQuery,
-  });
-  const { createMember, isLoading: isCreating } = useCreateMember();
-  const { data: propertiesData } = useGetProperties({ page: 1, perPage: 100, enabled: createOpen });
-  const { list: unitsList } = useGetUnits({ page: 1, perPage: 100 });
-  const properties = propertiesData?.data ?? [];
-  const units = useMemo(() => (unitsList?.items ?? []).filter((unit) => !form.propertyId || unit.propertyId === form.propertyId), [unitsList?.items, form.propertyId]);
+  const { data, isLoading, isError } = useGetMembers({ page: currentPage, perPage: pageSize, search: searchQuery });
 
   const currentMembers = data?.data ?? [];
 
@@ -63,23 +46,6 @@ const Members = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (!createOpen) return;
-    setForm(emptyMember);
-    setFormError('');
-  }, [createOpen]);
-
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setFormError('');
-    try {
-      await createMember(form);
-      setCreateOpen(false);
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Could not create member.');
-    }
-  };
-
   return (
     <div className="space-y-5 px-1 pb-8" style={{ fontFamily: 'Poppins, sans-serif' }}>
       {/* Section Header */}
@@ -87,14 +53,9 @@ const Members = () => {
         <h2 className="text-[16px] font-display font-medium text-foreground" style={{ fontFamily: 'Poppins', fontWeight: 500, color: '#4c4c4c' }}>
           Members List
         </h2>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate('join-requests')}>
-            Join Requests
-          </Button>
-          <Button onClick={() => setCreateOpen(true)} leftIcon={<img src="/assets/plus.svg" alt="" width={16} height={16} />}>
-            Create Member
-          </Button>
-        </div>
+        <Button variant="outline" onClick={() => navigate('join-requests')}>
+          Join Requests
+        </Button>
       </div>
 
       <Card className="overflow-visible border-[#eaeaea] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]" style={{ borderRadius: '10px' }}>
@@ -316,27 +277,6 @@ const Members = () => {
         </div>
       </div>
 
-      <Modal isOpen={createOpen} onClose={() => !isCreating && setCreateOpen(false)} title="Create Member" presentation="drawer" bodyClassName="px-8 py-7">
-        <form onSubmit={submit} className="space-y-5">
-          <div><h3 className="text-base font-medium text-[#393939]">Member Details</h3><p className="mt-1 text-sm text-[#727272]">Enter the member’s contact and residence details.</p></div>
-          {formError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{formError}</p>}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <Field label="First Name"><input required className={inputCls} value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} placeholder="Enter first name" /></Field>
-            <Field label="Last Name"><input required className={inputCls} value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} placeholder="Enter last name" /></Field>
-          </div>
-          <Field label="Email Address"><input required type="email" className={inputCls} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Enter email address" /></Field>
-          <Field label="Phone Number"><input required type="tel" className={inputCls} value={form.phoneNumber} onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })} placeholder="Enter phone number" /></Field>
-          <Field label="Address"><textarea required className={`${inputCls} min-h-24 resize-none`} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Enter address" /></Field>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <Field label="Property (optional)"><select className={inputCls} value={form.propertyId} onChange={(e) => setForm({ ...form, propertyId: e.target.value, unitId: '' })}><option value="">Select property</option>{properties.map((property) => <option key={property.id} value={property.id}>{property.name ?? 'Unnamed property'}</option>)}</select></Field>
-            <Field label="Unit (optional)"><select className={inputCls} value={form.unitId} onChange={(e) => setForm({ ...form, unitId: e.target.value })}><option value="">Select unit</option>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}</select></Field>
-          </div>
-          <div className="flex justify-end gap-3 border-t border-[#eaeaea] pt-5">
-            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={isCreating}>Cancel</Button>
-            <Button type="submit" isLoading={isCreating}>Create Member</Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };
