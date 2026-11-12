@@ -78,11 +78,11 @@ export const useApproveRepair = (id: string) =>
   useApiManager({
     queryKey: ["get_repairs"],
     endpoint: `repairs/${id}/approve`,
-    method: "POST",
+    method: "PATCH",
     isAuth: true,
     isCode: true,
     showSuccessToastt: true,
-    successMessage: "Repair request approved successfully",
+    // successMessage: "Repair request approved successfully",
   });
 
 export const extractRepairs = (payload: any): RepairRequest[] =>
