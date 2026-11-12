@@ -5,7 +5,11 @@ import {
   useCreateUser,
   useUpdateUser,
 } from "@/api/api_controllers/userController";
-import { extractRoles, useGetAdminRoles } from "@/api/api_controllers/adminController";
+import {
+  extractRoles,
+  useGetAdminRoles,
+} from "@/api/api_controllers/adminController";
+import { prettyRole } from "@/lib/userUtilis";
 
 
 export interface UserRecord {
@@ -14,9 +18,12 @@ export interface UserRecord {
   lastName?: string;
   name?: string;
   email?: string;
-  phoneNumber?: string;
+  phoneNumber?: string | null;
   roleId?: string;
+  roles?: { id: string; name: string }[];
   role?: string | { id?: string; name?: string };
+  status?: string;
+  isActive?: boolean;
   [key: string]: unknown;
 }
 
@@ -37,6 +44,7 @@ const labelStyle = { fontFamily: "Poppins", color: "#4c4c4c" };
 
 const initialRoleId = (user?: UserRecord | null) =>
   user?.roleId ??
+  user?.roles?.[0]?.id ??
   (typeof user?.role === "object" ? user.role?.id : undefined) ??
   "";
 
@@ -78,19 +86,18 @@ const UserModal = ({ isOpen, onClose, user }: UserModalProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const payload = {
+    const base = {
       roleId,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      email: email.trim(),
       phoneNumber: phoneNumber.trim(),
     };
 
     try {
       if (isEdit) {
-        await updateUser(payload);
+        await updateUser(base); // email can't be changed, so it isn't sent
       } else {
-        await createUser({ ...payload, password });
+        await createUser({ ...base, email: email.trim(), password });
       }
       onClose();
     } catch {
@@ -102,7 +109,6 @@ const UserModal = ({ isOpen, onClose, user }: UserModalProps) => {
     isEdit &&
     firstName.trim() === names.first &&
     lastName.trim() === names.last &&
-    email.trim() === (user!.email ?? "") &&
     phoneNumber.trim() === (user!.phoneNumber ?? "") &&
     roleId === initialRoleId(user);
 
@@ -175,11 +181,12 @@ const UserModal = ({ isOpen, onClose, user }: UserModalProps) => {
           <input
             id="user-email"
             type="email"
+            disabled={isEdit}
             placeholder="Enter email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className={inputClass}
+            className={`${inputClass} disabled:opacity-60 disabled:cursor-not-allowed`}
             style={inputStyle}
           />
         </div>
@@ -226,7 +233,7 @@ const UserModal = ({ isOpen, onClose, user }: UserModalProps) => {
               </option>
               {roles.map((role) => (
                 <option key={role.id} value={role.id}>
-                  {role.name}
+                  {prettyRole(role.name)}
                 </option>
               ))}
             </select>

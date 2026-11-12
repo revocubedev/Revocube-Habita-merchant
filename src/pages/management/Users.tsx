@@ -8,6 +8,7 @@ import {
   Trash2,
   Eye,
   Ban,
+  UserCheck,
 } from "lucide-react";
 import Card from "@/components/ui/Card";
 import { CardContent } from "@/components/ui/Card";
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/Table";
 import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
 import DeleteModal from "@/components/ui/DeleteModal";
+import { useAuth } from "@/lib/auth";
 import UserModal, { type UserRecord } from "@/components/portal/UserModal";
 import {
   // USERS_ENDPOINT,
@@ -31,6 +33,8 @@ import {
 } from "@/api/api_controllers/userController";
 import ViewUserModal from "@/components/portal/ViewUserModal";
 import SuspendUserModal from "@/components/portal/SuspendUserModal";
+import { isSuspended, prettyRole } from "@/lib/userUtilis";
+import UnsuspendUserModal from "@/components/portal/UnsuspendUserModal";
 
 const PER_PAGE = 10;
 
@@ -38,7 +42,9 @@ const displayName = (u: UserRecord) =>
   [u.firstName, u.lastName].filter(Boolean).join(" ") || u.name || "—";
 
 const displayRole = (u: UserRecord) =>
-  typeof u.role === "string" ? u.role : u.role?.name ?? "—";
+  prettyRole(
+    u.roles?.[0]?.name ?? (typeof u.role === "string" ? u.role : u.role?.name)
+  );
 
 const Users = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,14 +52,19 @@ const Users = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const { user: me } = useAuth();
   const [viewingUser, setViewingUser] = useState<UserRecord | null>(null);
   const [suspendingUser, setSuspendingUser] = useState<UserRecord | null>(null);
+  const [unSuspendingUser, setUnSuspendingUser] = useState<UserRecord | null>(
+    null
+  );
   const [visibleColumns, setVisibleColumns] = useState([
-    
     "User",
     "Email",
     "Phone Number",
+    "Status",
   ]);
+
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
@@ -97,7 +108,7 @@ const Users = () => {
     { id: "Email", label: "Email" },
     { id: "Phone Number", label: "Phone Number" },
     { id: "Assign Role", label: "Assign Role" },
-    { id: "Actions", label: "Actions" },
+    { id: "Status", label: "Status" },
   ];
 
   const pageBtn =
@@ -313,6 +324,20 @@ const Users = () => {
                         </span>
                       </TableCell>
                     )}
+                    {visibleColumns.includes("Status") && (
+                      <TableCell>
+                        <span
+                          className="px-2 py-1 rounded-full text-xs font-medium"
+                          style={
+                            isSuspended(user)
+                              ? { backgroundColor: "#FEE2E2", color: "#B91C1C" }
+                              : { backgroundColor: "#E5F9EC", color: "#27964F" }
+                          }
+                        >
+                          {isSuspended(user) ? "Suspended" : "Active"}
+                        </span>
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
                       <RowActionsMenu>
                         {(close) => (
@@ -340,16 +365,41 @@ const Users = () => {
                             </RowAction>
 
                             {/* Suspend User */}
-                            <RowAction
-                              danger
-                              onClick={() => {
-                                close();
-                                setSuspendingUser(user);
-                              }}
-                            >
-                              <Ban className="w-4 h-4" />
-                              Suspend
-                            </RowAction>
+                            {isSuspended(user) ? (
+                              <RowAction
+                                onClick={() => {
+                                  close();
+                                  setUnSuspendingUser(user);
+                                }}
+                              >
+                                <UserCheck className="w-4 h-4" />
+                                Unsuspend
+                              </RowAction>
+                            ) : (
+                              <RowAction
+                                danger
+                                onClick={() => {
+                                  close();
+                                  setSuspendingUser(user);
+                                }}
+                              >
+                                <Ban className="w-4 h-4" />
+                                Suspend
+                              </RowAction>
+                            )}
+
+                            {user.id !== me?.id && (
+                              <RowAction
+                                danger
+                                onClick={() => {
+                                  close();
+                                  setDeletingUser(user);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </RowAction>
+                            )}
                           </>
                         )}
                       </RowActionsMenu>
@@ -440,12 +490,34 @@ const Users = () => {
           user={{ id: suspendingUser.id, name: displayName(suspendingUser) }}
         />
       )}
+      {unSuspendingUser && (
+        <UnsuspendUserModal
+          key={unSuspendingUser.id}
+          isOpen
+          onClose={() => setUnSuspendingUser(null)}
+          user={{
+            id: unSuspendingUser.id,
+            name: displayName(unSuspendingUser),
+          }}
+        />
+      )}
       {viewingUser && (
         <ViewUserModal
           key={viewingUser.id}
           isOpen
           onClose={() => setViewingUser(null)}
           userId={viewingUser.id}
+        />
+      )}
+      {deletingUser && (
+        <DeleteModal
+          key={deletingUser.id}
+          isOpen
+          onClose={() => setDeletingUser(null)}
+          endpoint={`estate/${deletingUser.id}`}
+          queryKey={["get_users"]}
+          entity="User"
+          itemName={displayName(deletingUser)}
         />
       )}
     </div>

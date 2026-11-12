@@ -32,7 +32,7 @@ const ProfileForm = ({ id, profile }: { id: string; profile: Profile }) => {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  const { updateProfile, isLoading } = useUpdateProfile(id);
+  const { updateProfile, isLoading } = useUpdateProfile();
 
   useEffect(() => {
     if (!file) {
