@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Home } from 'lucide-react';
-import { useGetProperties, useCreateProperty, useUpdateProperty, useGetPropertyById, useDeleteProperty, type Property, type PropertyInput } from '@/api/api_controllers/property';
+import { Download, Home, Upload } from 'lucide-react';
+import { useGetProperties, useCreateProperty, useUpdateProperty, useGetPropertyById, useDeleteProperty, useBulkUploadPropertiesAndUnits, type BulkPropertyImportResult, type Property, type PropertyInput } from '@/api/api_controllers/property';
 
 import type { FormEvent } from 'react';
 import Modal, { Field, inputCls } from '@/components/ui/Modal';
@@ -235,6 +235,99 @@ function DeletePropertyModal({ property, onClose }: { property: Property; onClos
   );
 }
 
+function BulkPropertyUploadModal({ onClose }: { onClose: () => void }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [result, setResult] = useState<BulkPropertyImportResult | null>(null);
+  const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const bulkUpload = useBulkUploadPropertiesAndUnits();
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!file || bulkUpload.isLoading) return;
+    setError('');
+    try {
+      const response = await bulkUpload.uploadBulkPropertiesAndUnits(file);
+      setResult(response.data);
+    } catch (err) {
+      setError(message(err));
+    }
+  };
+
+  const propertySummary = result?.summary.properties;
+  const unitSummary = result?.summary.units;
+  const hasErrors = Boolean(result && (result.errors.properties.length || result.errors.units.length));
+  const formatImportError = (item: unknown) => {
+    if (typeof item === 'string') return item;
+    if (item && typeof item === 'object') {
+      const error = item as Record<string, unknown>;
+      const row = typeof error.row === 'number' ? `Row ${error.row}: ` : '';
+      const detail = [error.message, error.error, error.reason].find((value) => typeof value === 'string');
+      return `${row}${detail ?? JSON.stringify(error)}`;
+    }
+    return String(item);
+  };
+
+  const chooseFile = () => fileInputRef.current?.click();
+  const selectFile = (nextFile?: File) => {
+    if (!nextFile) return;
+    setFile(nextFile);
+    setResult(null);
+    setError('');
+  };
+
+  return (
+    <Modal isOpen title="Bulk Upload Properties & Units" presentation="drawer" onClose={() => { if (!bulkUpload.isLoading) onClose(); }} bodyClassName="bg-white px-5 py-6 sm:px-8">
+      <form onSubmit={submit} className="space-y-5 pb-24">
+        <p className="text-sm leading-5 text-[#727272]">Upload an Excel file to add multiple properties and units at once.</p>
+        <section className="flex items-center justify-between gap-4 rounded-xl border border-[#e2e8f0] bg-[#fcfcfd] p-4">
+          <div>
+            <h3 className="text-base font-semibold text-[#393939]">Need a template?</h3>
+            <p className="mt-1 text-sm text-[#5f5f5f]">Download the approved properties and units import workbook.</p>
+          </div>
+          <a href="/templates/property-unit-bulk-import-template.xlsx" download="property-unit-bulk-import-template.xlsx" className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-brand-text px-4 py-2 text-sm font-medium text-brand-text hover:bg-[#fff5f5]">
+            <Download className="h-4 w-4" />Template
+          </a>
+        </section>
+        <input ref={fileInputRef} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(event) => { selectFile(event.target.files?.[0]); event.target.value = ''; }} />
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={chooseFile}
+          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); chooseFile(); } }}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => { event.preventDefault(); selectFile(event.dataTransfer.files?.[0]); }}
+          className="flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#cbd5e1] bg-white px-6 text-center transition-colors hover:border-brand-text hover:bg-[#fffafa]"
+        >
+          <Upload className="mb-4 h-10 w-10 text-[#98a2b3]" />
+          <p className="text-base font-medium text-[#4c4c4c]">Click to upload or drag & drop</p>
+          <p className="mt-1 text-sm text-[#98a2b3]">.xlsx</p>
+          {file && <p className="mt-4 max-w-full truncate rounded-md bg-[#f6f6f6] px-3 py-2 text-sm text-[#393939]">{file.name}</p>}
+        </div>
+        {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+        {result && <section className="space-y-4 rounded-lg border border-[#eaeaea] bg-[#fafafa] p-4" aria-live="polite">
+          <h3 className="text-sm font-semibold text-[#393939]">Import complete</h3>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-lg bg-white p-3"><p className="text-xs text-[#727272]">Properties</p><p className="mt-1 text-sm text-[#393939]">{propertySummary?.successful ?? 0} imported · {propertySummary?.failed ?? 0} failed</p></div>
+            <div className="rounded-lg bg-white p-3"><p className="text-xs text-[#727272]">Units</p><p className="mt-1 text-sm text-[#393939]">{unitSummary?.successful ?? 0} imported · {unitSummary?.failed ?? 0} failed</p></div>
+          </div>
+          {result.properties.length > 0 && <p className="text-sm text-[#5f5f5f]">Properties: {result.properties.map((property) => property.name).join(', ')}</p>}
+          {result.units.length > 0 && <p className="text-sm text-[#5f5f5f]">Units: {result.units.map((unit) => unit.name).join(', ')}</p>}
+          {hasErrors && <div className="space-y-2 rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">
+            <p className="font-medium">Some rows could not be imported.</p>
+            {result.errors.properties.map((item, index) => <p key={`property-error-${index}`}>Property: {formatImportError(item)}</p>)}
+            {result.errors.units.map((item, index) => <p key={`unit-error-${index}`}>Unit: {formatImportError(item)}</p>)}
+          </div>}
+        </section>}
+        <div className="fixed bottom-0 right-0 flex h-[88px] w-full max-w-[622px] items-center gap-3 border-t border-[#eaeaea] bg-white px-5 sm:px-8">
+          <Button type="button" variant="outline" disabled={bulkUpload.isLoading} onClick={onClose} className="flex-1">{result ? 'Close' : 'Cancel'}</Button>
+          {!result && <Button type="submit" disabled={!file || bulkUpload.isLoading} className="flex-1 bg-brand-text text-white hover:bg-brand-text/90" leftIcon={<Upload className="h-4 w-4" />}>{bulkUpload.isLoading ? 'Uploading...' : 'Upload File'}</Button>}
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 function PropertyIcon({ name, size, className = '' }: { name: string; size: number; className?: string }) {
   return <img src={`/assets/${name}.svg`} alt="" width={size} height={size} className={`shrink-0 ${className}`} />;
 }
@@ -259,15 +352,18 @@ const Properties = () => {
   const [pageSize, setPageSize] = useState(12);
   const [modal, setModal] = useState<{ mode: PropertyMode; id?: string } | null>(null);
   const [deleting, setDeleting] = useState<Property | null>(null);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const code = localStorage.getItem('code')?.trim() ?? '';
   const query = useGetProperties({ page: currentPage, perPage: pageSize, search: searchQuery });
   const properties = query.data?.data ?? [];
   const meta = query.data?.meta;
   const loadError = !code ? 'Estate code is missing. Sign in to your estate first.' : query.error?.message;
   const filtered = properties.filter((property) => (property.name ?? '').toLowerCase().includes(searchQuery.trim().toLowerCase()));
-  const totalPages = Math.max(1, meta ? meta.totalPages : Math.ceil(filtered.length / pageSize));
+  // Apply the name filter locally as well, so the search remains reliable even
+  // when a backend list response includes pagination metadata but ignores search.
+  const totalPages = Math.max(1, meta && !searchQuery.trim() ? meta.totalPages : Math.ceil(filtered.length / pageSize));
   const start = (currentPage - 1) * pageSize;
-  const currentProperties = loadError ? [] : meta ? properties : filtered.slice(start, start + pageSize);
+  const currentProperties = loadError ? [] : searchQuery.trim() ? filtered.slice(start, start + pageSize) : meta ? properties : filtered.slice(start, start + pageSize);
   const navigationDisabled = query.isFetching || Boolean(loadError);
   const pageButton = 'flex h-[26px] items-center justify-center rounded border border-[#eaeaea] bg-white text-xs leading-[18px] text-[#4c4c4c] disabled:opacity-40';
   useEffect(() => { if (query.data && currentPage > totalPages) setCurrentPage(totalPages); }, [query.data, currentPage, totalPages]);
@@ -280,7 +376,10 @@ const Properties = () => {
       </nav>
       <div className="mt-[26px] flex min-h-11 items-center justify-between gap-4">
         <h1 className="text-lg font-semibold leading-[1.4] text-[#393939]">Property List</h1>
-        <button type="button" disabled={!code} onClick={() => openProperty('create')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-text px-4 py-3 text-sm font-medium leading-5 text-white hover:bg-brand-text/90 disabled:opacity-50"><PropertyIcon name="plus" size={18} />Create Property</button>
+        <div className="flex items-center gap-3">
+          <button type="button" disabled={!code} onClick={() => setBulkUploadOpen(true)} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-brand-text bg-white px-4 py-3 text-sm font-medium leading-5 text-brand-text hover:bg-[#fff5f5] disabled:opacity-50">Bulk Upload</button>
+          <button type="button" disabled={!code} onClick={() => openProperty('create')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-text px-4 py-3 text-sm font-medium leading-5 text-white hover:bg-brand-text/90 disabled:opacity-50"><PropertyIcon name="plus" size={18} />Create Property</button>
+        </div>
       </div>
       <section aria-label="Property list" className="mt-8 rounded-[10px] border border-[#eaeaea] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="border-b border-[#eaeaea] px-4 py-6 sm:px-6">
@@ -339,6 +438,7 @@ const Properties = () => {
       </div>
       {modal && <PropertyModal key={`${modal.mode}-${modal.id ?? 'new'}`} mode={modal.mode} id={modal.id} onClose={() => setModal(null)} />}
       {deleting && <DeletePropertyModal property={deleting} onClose={() => setDeleting(null)} />}
+      {bulkUploadOpen && <BulkPropertyUploadModal onClose={() => setBulkUploadOpen(false)} />}
     </div>
   );
 };
