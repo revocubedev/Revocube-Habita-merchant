@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
+import type {InternalAxiosRequestConfig } from "axios";
 import { baseURL } from "./axios_without_token";
 
 // Set this to your backend's refresh route. Leave null if there isn't one:
@@ -103,34 +103,36 @@ axiosAuth.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-type AuthRequestConfig = AxiosRequestConfig & { _retry?: boolean };
 
-axiosAuth.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config as AuthRequestConfig;
 
-    if (error.response?.status !== 401 || originalRequest?._retry) {
-      return Promise.reject(error);
+axiosAuth.interceptors.request.use(
+  async (config: InternalAxiosRequestConfig) => {
+    let token = getStoredToken();
+
+    if (token && REFRESH_ENDPOINT && isTokenExpiredOrExpiringSoon(token)) {
+      try {
+        token = await getRefreshedToken();
+      } catch (err) {
+        handleRefreshFailure();
+        throw err;
+      }
     }
 
-    if (!REFRESH_ENDPOINT) {
-      handleRefreshFailure();
-      return Promise.reject(error);
+    // Important: allow the browser to set the multipart boundary
+    if (
+      typeof FormData !== "undefined" &&
+      config.data instanceof FormData
+    ) {
+      config.headers.delete("Content-Type");
     }
 
-    originalRequest._retry = true;
-
-    try {
-      const newToken = await getRefreshedToken();
-      originalRequest.headers = originalRequest.headers || {};
-      originalRequest.headers.Authorization = `Bearer ${newToken}`;
-      return axiosAuth(originalRequest);
-    } catch (err) {
-      handleRefreshFailure();
-      return Promise.reject(err);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-  }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
 );
 
 export default axiosAuth;

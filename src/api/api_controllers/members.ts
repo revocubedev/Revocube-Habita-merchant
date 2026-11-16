@@ -1,4 +1,5 @@
 import useGetApiManager from "../useGetApiManager";
+import useApiManager from "../useApiManager";
 
 export interface MemberProperty {
   id: string;
@@ -30,11 +31,20 @@ export interface Member {
   lastName?: string;
   email?: string;
   phone?: string;
-  address?: string;
+  streetAddress?: string;
   propertyId?: string;
   unitId?: string;
+  status?: string;
+  isSuspended?: boolean;
+  suspended?: boolean;
+  isRemoved?: boolean;
+  removed?: boolean;
+  properties?: MemberRelation | MemberRelation[] | null;
+  units?: MemberRelation | MemberRelation[] | null;
   profileImage?: string | null;
 }
+
+export type MemberRelation = { id?: string; name?: string } | string;
 
 export interface MembersResponse {
   success: boolean;
@@ -102,6 +112,16 @@ export function parseMembersResponse(payload: unknown): MembersResponse {
 
 const estateCode = () => localStorage.getItem("code")?.trim() ?? "";
 
+const requireMemberId = (id?: string) => {
+  const memberId = id?.trim();
+  if (!memberId) throw new Error("Member ID is required");
+  return memberId;
+};
+
+const requireEstateCode = () => {
+  if (!estateCode()) throw new Error("Estate code is missing");
+};
+
 /** GET /:code/members/ */
 export const useGetMembers = ({
   page = 1,
@@ -131,3 +151,93 @@ export const useGetMembers = ({
     select: parseMembersResponse,
   });
 };
+
+/** GET /:code/members/:id */
+export const useGetMemberById = (id?: string, enabled = true) => {
+  const code = estateCode();
+  const memberId = id?.trim() ?? "";
+  return useGetApiManager<{ success?: boolean; message?: string; data: Member }>({
+    endpoint: `members/${encodeURIComponent(memberId)}`,
+    queryKey: [QUERY_KEY, "detail", code, memberId],
+    isAuth: true,
+    isCode: true,
+    enabled: enabled && Boolean(code) && Boolean(memberId),
+  });
+};
+
+/** PATCH /:code/members/:id/remove */
+export const useRemoveEstateMember = (id?: string) => {
+  const { callApi, isLoading, data, response, error, isSuccess } = useApiManager({
+    endpoint: `members/${encodeURIComponent(id?.trim() ?? "")}/remove`,
+    method: "PATCH",
+    queryKey: [QUERY_KEY],
+    isAuth: true,
+    isCode: true,
+  });
+  const removeEstateMember = async () => {
+    requireEstateCode();
+    requireMemberId(id);
+    const result = await callApi();
+    if (result.success === false) throw new Error(result.message || "Could not remove member");
+    return result;
+  };
+  return { removeEstateMember, isLoading, data, response, error, isSuccess };
+};
+
+/** PATCH /:code/members/:id/restore */
+export const useRestoreEstateMember = (id?: string) => {
+  const { callApi, isLoading, data, response, error, isSuccess } = useApiManager({
+    endpoint: `members/${encodeURIComponent(id?.trim() ?? "")}/restore`,
+    method: "PATCH",
+    queryKey: [QUERY_KEY],
+    isAuth: true,
+    isCode: true,
+  });
+  const restoreEstateMember = async () => {
+    requireEstateCode();
+    requireMemberId(id);
+    const result = await callApi();
+    if (result.success === false) throw new Error(result.message || "Could not restore member");
+    return result;
+  };
+  return { restoreEstateMember, isLoading, data, response, error, isSuccess };
+};
+
+/** PATCH /:code/members/:id/suspend */
+export const useSuspendEstateMember = (id?: string) => {
+  const { callApi, isLoading, data, response, error, isSuccess } = useApiManager({
+    endpoint: `members/${encodeURIComponent(id?.trim() ?? "")}/suspend`,
+    method: "PATCH",
+    queryKey: [QUERY_KEY],
+    isAuth: true,
+    isCode: true,
+  });
+  const suspendEstateMember = async () => {
+    requireEstateCode();
+    requireMemberId(id);
+    const result = await callApi();
+    if (result.success === false) throw new Error(result.message || "Could not suspend member");
+    return result;
+  };
+  return { suspendEstateMember, isLoading, data, response, error, isSuccess };
+};
+
+/** PATCH /:code/members/:id/unsuspend */
+export const useUnsuspendEstateMember = (id?: string) => {
+  const { callApi, isLoading, data, response, error, isSuccess } = useApiManager({
+    endpoint: `members/${encodeURIComponent(id?.trim() ?? "")}/unsuspend`,
+    method: "PATCH",
+    queryKey: [QUERY_KEY],
+    isAuth: true,
+    isCode: true,
+  });
+  const unsuspendEstateMember = async () => {
+    requireEstateCode();
+    requireMemberId(id);
+    const result = await callApi();
+    if (result.success === false) throw new Error(result.message || "Could not unsuspend member");
+    return result;
+  };
+  return { unsuspendEstateMember, isLoading, data, response, error, isSuccess };
+};
+

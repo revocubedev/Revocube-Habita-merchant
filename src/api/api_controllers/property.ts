@@ -42,6 +42,25 @@ export interface PropertyResponse<T = Property> {
   };
 }
 
+export interface BulkImportSummary {
+  total: number;
+  successful: number;
+  failed: number;
+}
+
+export interface BulkPropertyImportResult {
+  summary: { properties: BulkImportSummary; units: BulkImportSummary };
+  properties: Array<{ importKey: string; propertyId: string; name: string }>;
+  units: Array<{ row: number; unitId: string; name: string; propertyId: string }>;
+  errors: { properties: unknown[]; units: unknown[] };
+}
+
+export interface BulkPropertyImportResponse {
+  success: boolean;
+  message?: string;
+  data: BulkPropertyImportResult;
+}
+
 const QUERY_KEY = "get_properties";
 
 function estateCode(): string {
@@ -129,6 +148,29 @@ export const useCreateProperty = () => {
   };
 
   return { ...api, createProperty };
+};
+
+/** POST /:code/properties/bulk — imports properties and units from an Excel workbook. */
+export const useBulkUploadPropertiesAndUnits = () => {
+  const api = useApiManager({
+    endpoint: "properties/bulk",
+    method: "POST",
+    queryKey: [QUERY_KEY, "get_units"],
+    isAuth: true,
+    isCode: true,
+    validateResponse: ensureSuccess,
+  });
+
+  const uploadBulkPropertiesAndUnits = async (file: File): Promise<BulkPropertyImportResponse> => {
+    requireEstate();
+    if (!file) throw new Error("Select an Excel file to import");
+    if (!/\.xlsx$/i.test(file.name)) throw new Error("Only .xlsx Excel files are supported");
+    const form = new FormData();
+    form.append("file", file);
+    return api.callApi(form) as Promise<BulkPropertyImportResponse>;
+  };
+
+  return { ...api, uploadBulkPropertiesAndUnits };
 };
 
 /** PATCH /:code/properties/:id — only include fields being changed. */
