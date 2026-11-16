@@ -100,6 +100,7 @@ const MemberActions = ({
   );
 };
 
+
 const Members = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -119,8 +120,7 @@ const Members = () => {
     { id: 'Address', label: 'Address' },
     { id: 'Property', label: 'Property' },
     { id: 'Unit', label: 'Unit' },
-    { id: 'Status', label: 'Status' },
-    { id: 'Actions', label: 'Actions' },
+    // { id: 'Actions', label: 'Actions' },
   ];
 
   const totalPages = Math.max(1, data?.meta?.totalPages ?? 1);
@@ -289,8 +289,8 @@ const Members = () => {
                       {isLoading
                         ? "Loading members..."
                         : isError
-                          ? "Could not load members."
-                          : "No members found."}
+                        ? "Could not load members."
+                        : "No members found."}
                     </TableCell>
                   </TableRow>
                 )}
@@ -309,8 +309,9 @@ const Members = () => {
                                 .toUpperCase()}
                             </div>
                             {member.name ??
-                              (`${member.firstName ?? ""} ${member.lastName ?? ""
-                                }`.trim() ||
+                              (`${member.firstName ?? ""} ${
+                                member.lastName ?? ""
+                              }`.trim() ||
                                 "—")}
                           </div>
                         </TableCell>
@@ -327,7 +328,11 @@ const Members = () => {
                       )}
                       {visibleColumns.includes("Property") && (
                         <TableCell className="px-6 text-[#5f5f5f]">
-                          {relationName(member.properties)}
+                          {member.properties?.length
+                            ? member.properties
+                                .map((property) => property.name)
+                                .join(", ")
+                            : "—"}
                         </TableCell>
                       )}
                       {visibleColumns.includes("Unit") && (
@@ -357,6 +362,55 @@ const Members = () => {
                             memberId={member.id}
                             onStatusChange={(id, status) => setMemberStatuses((current) => ({ ...current, [id]: status }))}
                           />
+                          {member.units?.length
+                            ? member.units.map((unit) => unit.name).join(", ")
+                            : "—"}
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("Actions") && (
+                        <TableCell className="text-right">
+                          {/* <RowActionsMenu
+                            triggerIcon={
+                              <img
+                                src="/assets/ellipsis.svg"
+                                alt="Open member actions"
+                                width={18}
+                                height={18}
+                              />
+                            }
+                          >
+                            {(close) => (
+                              <>
+                                <RowAction onClick={close}>
+                                  <img
+                                    src="/assets/view.svg"
+                                    alt=""
+                                    width={16}
+                                    height={16}
+                                  />
+                                  View Details
+                                </RowAction>
+                                <RowAction onClick={close}>
+                                  <img
+                                    src="/assets/edit.svg"
+                                    alt=""
+                                    width={16}
+                                    height={16}
+                                  />
+                                  Edit
+                                </RowAction>
+                                <RowAction danger onClick={close}>
+                                  <img
+                                    src="/assets/delete.svg"
+                                    alt=""
+                                    width={16}
+                                    height={16}
+                                  />
+                                  Delete
+                                </RowAction>
+                              </>
+                            )}
+                          </RowActionsMenu> */}
                         </TableCell>
                       )}
                     </TableRow>

@@ -5,6 +5,7 @@ interface ViewUserModalProps {
   isOpen: boolean;
   onClose: () => void;
   userId: string;
+  profilePicture?: string | null;
 }
 
 const Field = ({ label, value }: { label: string; value?: string | null }) => (
@@ -67,28 +68,38 @@ const ViewUserModal = ({ isOpen, onClose, userId }: ViewUserModalProps) => {
       )}
 
       {!isLoading && !isError && user && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 pb-2">
-            <div
-              className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-lg text-muted-foreground"
-              style={{ fontFamily: "Poppins" }}
-            >
-              {(name ?? "?").charAt(0)}
-            </div>
-            <div>
-              <div
-                className="text-base font-medium"
-                style={{ fontFamily: "Poppins", color: "#393939" }}
-              >
-                {name ?? "—"}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 pb-2">
+                <div
+                  className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-lg text-muted-foreground overflow-hidden"
+                  style={{ fontFamily: "Poppins" }}
+                >
+                  {user.profilePicture ? (
+                    <img
+                      src={user.profilePicture}
+                      alt={name ?? "User profile"}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    (name ?? "?").charAt(0).toUpperCase()
+                  )}
+                </div>
+
+                <div>
+                  <div
+                    className="text-base font-medium"
+                    style={{ fontFamily: "Poppins", color: "#393939" }}
+                  >
+                    {name ?? "—"}
+                  </div>
+
+                  {role && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                      {role}
+                    </span>
+                  )}
+                </div>
               </div>
-              {role && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                  {role}
-                </span>
-              )}
-            </div>
-          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Email" value={user.email} />

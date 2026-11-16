@@ -3,13 +3,13 @@ import useApiManager from "../useApiManager";
 
 export interface CreateUserPayload {
   roleId: string;
-  name: string;
   firstName: string;
   lastName: string;
   email: string;
   phoneNumber: string;
   password: string;
 }
+
 export interface InviteAdminPayload {
   email: string;
   roleId: string;
@@ -30,7 +30,7 @@ export interface AuditLog {
   timeElapsed?: number;
 }
 
-export type UpdateUserPayload = Omit<CreateUserPayload, "password">;
+export type UpdateUserPayload = Omit<CreateUserPayload, "password" | "email">;
 
 export const useGetUsers = ({
   page,
@@ -114,6 +114,19 @@ export const useSuspendUser = (id?: string) => {
   const suspendUser = () => callApi({});
   return { suspendUser, isLoading, error, isSuccess };
 };
+export const useUnsuspendUser = (id?: string) => {
+  const { callApi, isLoading, error, isSuccess } = useApiManager({
+    endpoint: `estate/${id}/unsuspend`, // replace with the real route
+    queryKey: ["get_users", "get_user"],
+    method: "PATCH", // confirm in Postman: PATCH, PUT or POST
+    isAuth: true,
+    isCode: true,
+    successMessage: "User unsuspended successfully",
+  });
+
+  const unsuspendUser = () => callApi({});
+  return { unsuspendUser, isLoading, error, isSuccess };
+};
 
 // Handles [..], { data: [..] }, { data: { users: [..] } }, { data: { data: [..] } }
 export const extractUsers = (payload: any): any[] => {
@@ -158,9 +171,9 @@ export const useGetProfile = (id?: string, enabled = true) =>
     enabled: enabled && !!id,
   });
 
-export const useUpdateProfile = (id?: string) => {
+export const useUpdateProfile = () => {
   const { callApi, isLoading, error, isSuccess } = useApiManager({
-    endpoint: `estate/${id}/profile`,
+    endpoint: `estate/profile`,
     queryKey: ["get_profile", "get_users", "get_user"],
     method: "PATCH", 
     isAuth: true,
