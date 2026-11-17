@@ -8,9 +8,13 @@ import {
 import { createPortal } from "react-dom";
 import RowActionsMenu from "@/components/ui/RowActionsMenu";
 import { RowAction } from "@/components/ui/RowActionsMenu";
+import { ChevronDown, FileSpreadsheet } from "lucide-react";
+import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
+// TODO: adjust these three paths to match your project.
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
+import * as XLSX from "xlsx";
 import {
   useCreateExpense,
   useUpdateExpense,
@@ -140,7 +144,18 @@ function displayDate(value?: string): string {
         year: "numeric",
       });
 }
+function formatAmount(raw: string): string {
+  if (!raw) return "";
+  const [int, dec] = raw.split(".");
+  const withCommas = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return dec !== undefined ? `${withCommas}.${dec}` : withCommas;
+}
 
+function cleanAmount(input: string): string {
+  const cleaned = input.replace(/[^\d.]/g, "");
+  const [int, ...rest] = cleaned.split(".");
+  return rest.length ? `${int}.${rest.join("").slice(0, 2)}` : int;
+}
 function inputDate(value?: string): string {
   if (!value) return "";
 
@@ -667,6 +682,7 @@ function ExpenseModal({
                   }
                   className={controlClass}
                 />
+                <Input required type="text" inputMode="decimal" placeholder="0.00" value={formatAmount(form.amount)} onChange={(event) => change("amount", cleanAmount(event.target.value))} className={controlClass} />
               </Field>
             </div>
 
@@ -804,6 +820,8 @@ function ExpenseModal({
                   onChange={(event) =>
                     change("amount", formatAmount(event.target.value))
                   }
+                  value={formatAmount(form.amount)}
+                  onChange={(e) => change("amount", cleanAmount(e.target.value))}
                   className={inputClass}
                 />
               </label>
@@ -900,6 +918,16 @@ export default function Expense() {
     expense?: ApiExpense;
   } | null>(null);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!(event.target as HTMLElement).closest('.expense-column-menu-container')) {
+        setShowColumns(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const response = query.data;
 
   const loadError = !code.trim()
@@ -959,37 +987,53 @@ export default function Expense() {
     }
   };
 
-  const exportCsv = () => {
-    const escapeCell = (value: string) => {
-      // Prevent spreadsheet formulas from executing in exported text.
-      const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
-      return `"${safe.replace(/"/g, '""')}"`;
-    };
-
-    const lines = [
-      shownColumns.map(escapeCell).join(","),
-      ...filtered.map((expense) =>
-        shownColumns
-          .map((column) => escapeCell(cellValue(expense, column)))
-          .join(",")
-      ),
-    ];
-
-    const blob = new Blob(["\uFEFF" + lines.join("\r\n")], {
-      type: "text/csv;charset=utf-8",
+  const exportXlsx = () => {
+    // Same rules as before: filtered rows, visible columns only.
+    const rows = filtered.map((expense) => {
+      const row: Record<string, string | number> = {};
+      for (const column of shownColumns) {
+        // Real number for Amount so Excel can sum it; text for everything else.
+        row[column] =
+          column === "Amount"
+            ? Number.isFinite(Number(expense.amount)) ? Number(expense.amount) : ""
+            : cellValue(expense, column);
+      }
+      return row;
     });
 
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const sheet = XLSX.utils.json_to_sheet(rows, { header: shownColumns });
 
-    link.href = url;
-    link.download = "expenses.csv";
+   // Auto-size columns.
+sheet["!cols"] = shownColumns.map((column) => ({
+  wch:
+    Math.max(
+      column.length,
+      ...rows.map((row) => {
+        const value = row[column];
+        // Amount is displayed as ₦#,##0.00, so measure that, not the raw number.
+        if (column === "Amount" && typeof value === "number") {
+          return `₦${value.toLocaleString("en-NG", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`.length;
+        }
+        return String(value ?? "").length;
+      }),
+    ) + 4,
+}));
 
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    // Show Amount as ₦ currency while keeping it numeric.
+    const amountCol = shownColumns.indexOf("Amount");
+    if (amountCol !== -1) {
+      rows.forEach((_, i) => {
+        const cell = sheet[XLSX.utils.encode_cell({ r: i + 1, c: amountCol })];
+        if (cell) cell.z = '"₦"#,##0.00';
+      });
+    }
 
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Expenses");
+    XLSX.writeFile(workbook, "expenses.xlsx");
   };
 
   return (
@@ -1033,21 +1077,45 @@ export default function Expense() {
             className={`${inputClass} max-w-sm`}
           />
 
-          <button
-            type="button"
-            onClick={() => setShowColumns((value) => !value)}
-            className={buttonClass}
-          >
-            Column Visibility
-          </button>
+          <div className="relative expense-column-menu-container">
+            <button
+              type="button"
+              onClick={() => setShowColumns((value) => !value)}
+              className="flex items-center gap-2 rounded-lg border border-[#e3e3e3] bg-card px-3 py-2 text-sm transition-colors hover:bg-muted"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Column Visibility
+              <ChevronDown className="h-4 w-4" />
+            </button>
+            {showColumns && (
+              <div className="absolute left-0 top-full z-20 mt-1 w-48 rounded-lg border border-[#e3e3e3] bg-card p-2 shadow-lg">
+                {columns.map((column) => (
+                  <label key={column} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted">
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns.includes(column)}
+                      onChange={(event) => {
+                        setVisibleColumns((previous) => event.target.checked
+                          ? [...previous, column]
+                          : previous.filter((item) => item !== column));
+                      }}
+                      className="rounded border-gray-300"
+                      style={{ accentColor: '#f30100' }}
+                    />
+                    {column}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
-            onClick={exportCsv}
-            disabled={filtered.length === 0}
+            onClick={exportXlsx}
+            disabled={!code.trim() || filtered.length === 0}
             className={buttonClass}
           >
-            Export CSV
+            Export
           </button>
 
           <button

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +7,98 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { useGetMembers } from '@/api/api_controllers/members';
+import {
+  type Member,
+  type MemberRelation,
+  useGetMembers,
+  useRemoveEstateMember,
+  useRestoreEstateMember,
+  useSuspendEstateMember,
+  useUnsuspendEstateMember,
+} from '@/api/api_controllers/members';
+
+const relationName = (relation: MemberRelation | MemberRelation[] | null | undefined) => {
+  const values = Array.isArray(relation) ? relation : relation ? [relation] : [];
+  const names = values.map((value) => typeof value === 'string' ? value : value.name).filter(Boolean);
+  return names.length ? names.join(', ') : '—';
+};
+
+type ActionStatus = {
+  phase: 'pending' | 'success' | 'error';
+  message: string;
+};
+
+const backendStatus = (member: Member): ActionStatus => {
+  if (member.isRemoved || member.removed) return { phase: 'error', message: 'Removed' };
+  if (member.isSuspended || member.suspended || member.status?.toLowerCase() === 'suspended') {
+    return { phase: 'error', message: 'Suspended' };
+  }
+  return { phase: 'success', message: member.status ?? 'Active' };
+};
+
+/** Each menu uses the row's member.id for all membership-state requests. */
+const MemberActions = ({
+  memberId,
+  onStatusChange,
+}: {
+  memberId: string;
+  onStatusChange: (memberId: string, status: ActionStatus) => void;
+}) => {
+  const remove = useRemoveEstateMember(memberId);
+  const restore = useRestoreEstateMember(memberId);
+  const suspend = useSuspendEstateMember(memberId);
+  const unsuspend = useUnsuspendEstateMember(memberId);
+  const isBusy = remove.isLoading || restore.isLoading || suspend.isLoading || unsuspend.isLoading;
+
+  const run = async (
+    action: () => Promise<unknown>,
+    label: string,
+    successLabel: string,
+    close: () => void,
+    confirm = false,
+  ) => {
+    if (confirm && !window.confirm(`${label} this member?`)) return;
+    close();
+    onStatusChange(memberId, { phase: 'pending', message: label });
+    try {
+      await action();
+      onStatusChange(memberId, { phase: 'success', message: successLabel });
+    } catch (error) {
+      onStatusChange(memberId, {
+        phase: 'error',
+        message: error instanceof Error ? error.message : 'Action failed',
+      });
+    }
+  };
+
+  return (
+    <RowActionsMenu
+      label="Member actions"
+      triggerIcon={<img src="/assets/ellipsis.svg" alt="" width={18} height={18} />}
+    >
+      {(close) => (
+        <>
+          <RowAction disabled={isBusy} onClick={() => run(suspend.suspendEstateMember, 'Suspending', 'Suspended', close, true)}>
+            <img src="/assets/edit.svg" alt="" width={16} height={16} />
+            {suspend.isLoading ? 'Suspending...' : 'Suspend'}
+          </RowAction>
+          <RowAction disabled={isBusy} onClick={() => run(unsuspend.unsuspendEstateMember, 'Unsuspending', 'Active', close)}>
+            <img src="/assets/edit.svg" alt="" width={16} height={16} />
+            {unsuspend.isLoading ? 'Unsuspending...' : 'Unsuspend'}
+          </RowAction>
+          <RowAction disabled={isBusy} onClick={() => run(restore.restoreEstateMember, 'Restoring', 'Active', close)}>
+            <img src="/assets/view.svg" alt="" width={16} height={16} />
+            {restore.isLoading ? 'Restoring...' : 'Restore'}
+          </RowAction>
+          <RowAction danger disabled={isBusy} onClick={() => run(remove.removeEstateMember, 'Removing', 'Removed', close, true)}>
+            <img src="/assets/delete.svg" alt="" width={16} height={16} />
+            {remove.isLoading ? 'Removing...' : 'Remove'}
+          </RowAction>
+        </>
+      )}
+    </RowActionsMenu>
+  );
+};
 
 
 const Members = () => {
@@ -16,9 +106,10 @@ const Members = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState(['Member Name', 'Phone Number', 'Address', 'Property', 'Unit', 'Actions']);
+  const [visibleColumns, setVisibleColumns] = useState(['Member Name', 'Phone Number', 'Address', 'Property', 'Unit', 'Status', 'Actions']);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [memberStatuses, setMemberStatuses] = useState<Record<string, ActionStatus>>({});
   const { data, isLoading, isError } = useGetMembers({ page: currentPage, perPage: pageSize, search: searchQuery });
 
   const currentMembers = data?.data ?? [];
@@ -246,6 +337,31 @@ const Members = () => {
                       )}
                       {visibleColumns.includes("Unit") && (
                         <TableCell className="px-6 text-[#5f5f5f]">
+                          {relationName(member.units)}
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("Status") && (() => {
+                        const status = memberStatuses[member.id] ?? backendStatus(member);
+                        return (
+                          <TableCell className="px-6">
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                              status.phase === 'pending'
+                                ? 'bg-blue-50 text-blue-700'
+                                : status.phase === 'error'
+                                  ? 'bg-red-50 text-red-600'
+                                  : 'bg-green-50 text-green-700'
+                            }`}>
+                              {status.message}
+                            </span>
+                          </TableCell>
+                        );
+                      })()}
+                      {visibleColumns.includes("Actions") && (
+                        <TableCell className="px-6">
+                          <MemberActions
+                            memberId={member.id}
+                            onStatusChange={(id, status) => setMemberStatuses((current) => ({ ...current, [id]: status }))}
+                          />
                           {member.units?.length
                             ? member.units.map((unit) => unit.name).join(", ")
                             : "—"}
