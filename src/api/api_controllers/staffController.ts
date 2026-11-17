@@ -7,11 +7,13 @@ export interface AdminStaff {
   id: string;
   staffCode: string;
   fullName: string;
-  status: StaffCodeStatus | 'INCOMING';
+  status: StaffCodeStatus | "INCOMING";
   checkInDate: string | null;
   checkOutDate: string | null;
   checkInTime: string | null;
   checkOutTime: string | null;
+  checkInNote: string | null;
+  checkOutNote: string | null;
   createdAt: string;
   email?: string | null;
   phoneNumber?: string | null;
@@ -22,6 +24,7 @@ export interface AdminStaff {
   createdByMemberId?: string | null;
   allowedDays?: string[];
   updatedAt?: string;
+  isActive?: boolean;
 }
 
 export interface AdminStaffMeta {
@@ -70,4 +73,21 @@ export const useUpdateStaffCodeStatus = (staffCode: string) => {
   const updateStatus = (status: StaffCodeStatus) => callApi({ status });
 
   return { updateStatus, isLoading };
+};
+
+
+export const useDeactivateStaffCode = (staffCode?: string) => {
+  const { callApi, isLoading, error, isSuccess } = useApiManager({
+    endpoint: `staff/${staffCode}/deactivate`,
+    queryKey: [
+      /* same keys as useUpdateStaffCodeStatus */
+    ],
+    method: "PATCH", // confirm in Postman: PATCH, PUT or POST
+    isAuth: true,
+    isCode: true,
+    successMessage: "Staff access code deactivated successfully",
+  });
+
+  const deactivateStaffCode = () => callApi({});
+  return { deactivateStaffCode, isLoading, error, isSuccess };
 };

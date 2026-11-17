@@ -34,6 +34,8 @@ interface Guest {
   visitor: string;
   checkIn: string | null;
   checkOut: string | null;
+  checkInNote: string | null;
+  checkOutNote: string | null;
   status: string;
 }
 
@@ -43,6 +45,8 @@ const toGuest = (g: any): Guest => ({
   visitor: g.fullName ?? "—",
   checkIn: combine(g.checkInDate, g.checkInTime),
   checkOut: combine(g.checkOutDate, g.checkOutTime),
+  checkInNote: g.checkInNote ?? null,
+  checkOutNote: g.checkOutNote ?? null,
   status: g.status ?? "",
 });
 
@@ -54,6 +58,8 @@ const columns = [
   { id: "Visitor", label: "Visitor" },
   { id: "Check In", label: "Check In" },
   { id: "Check Out", label: "Check Out" },
+  { id: "Check In Note", label: "Check In Note" },
+  { id: "Check Out Note", label: "Check Out Note" },
   { id: "Status", label: "Status" },
 ];
 
@@ -333,7 +339,7 @@ const GuestVerification = () => {
                     {col.label}
                   </TableHead>
                 ))}
-                <TableHead className="text-right text-sm font-medium">
+                <TableHead className="text-left text-sm font-medium">
                   Actions
                 </TableHead>
               </TableRow>
@@ -395,6 +401,16 @@ const GuestVerification = () => {
                       {formatDate(guest.checkOut)}
                     </TableCell>
                   )}
+                  {visibleColumns.includes("Check In Note") && (
+                    <TableCell className="text-muted-foreground whitespace-nowrap truncate max-w-5">
+                      {guest.checkInNote}
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("Check In Note") && (
+                    <TableCell className="text-muted-foreground whitespace-nowrap truncate max-w-5">
+                      {guest.checkOutNote}
+                    </TableCell>
+                  )}
                   {visibleColumns.includes("Status") && (
                     <TableCell>
                       <span
@@ -408,7 +424,7 @@ const GuestVerification = () => {
                       </span>
                     </TableCell>
                   )}
-                  <TableCell className="text-right">
+                  <TableCell className="text-left">
                     <RowActionsMenu>
                       {(close) => (
                         <>

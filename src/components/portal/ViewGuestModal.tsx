@@ -89,6 +89,18 @@ const ViewGuestModal = ({ isOpen, onClose, guestId }: ViewGuestModalProps) => {
                 combine(guest.checkOutDate, guest.checkOutTime)
               )}
             />
+            <Field
+              label="Check In Note"
+              value={(
+                (guest.checkInNote)
+              )}
+            />
+            <Field
+              label="Check Out Note"
+              value={(
+                (guest.checkOutNote)
+              )}
+            />
             <Field label="Created" value={formatDate(guest.createdAt)} />
           </div>
         </div>

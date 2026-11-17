@@ -11,9 +11,10 @@ export interface Expense {
   notes?: string | null;
   receipt?: string | null;
   expenseNumber?: string | null;
-  property?: string | null;
-  unit?: string | null;
+  property?: string | { id: string; name: string } | null;
+  unit?: string | { id: string; name: string } | null;
 }
+
 
 export interface ExpenseInput {
   title: string;
