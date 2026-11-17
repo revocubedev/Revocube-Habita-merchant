@@ -211,7 +211,7 @@ const Units = () => {
                   {visibleColumns.includes('Property') && (
                     <TableCell className="text-muted-foreground">{unit.property?.name ?? '—'}</TableCell>
                   )}
-                  <TableCell className="text-right">
+                  <TableCell className="text-left">
                     <RowActionsMenu>
                       {(close) => (
                         <>

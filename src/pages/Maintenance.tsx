@@ -4,10 +4,11 @@ import {
   FileSpreadsheet,
   FileText,
   ChevronDown,
-  Edit,
+  RefreshCw,
   Eye,
   Download,
 } from "lucide-react";
+import UpdateRepairStatusModal from "@/components/portal/UpdateRepairStatusModal";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
 import { toast } from "sonner";
@@ -22,15 +23,22 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/Table";
-import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
+import RowActionsMenu from "@/components/ui/RowActionsMenu";
+import { RowAction } from "@/components/ui/RowActionsMenu";
 
 import {
   extractRepair,
   extractRepairs,
   useApproveRepair,
+  useCreateAdminRepair,
   useGetRepairById,
+  useGetRepairMaintainers,
+  useGetRepairProperties,
   useGetRepairs,
+  useGetRepairUnits,
 } from "@/api/api_controllers/repairsController";
+import CreateRepairRequestModal from "@/components/portal/AddRepairRequestModal";
+import { useGetMembers } from "@/api/api_controllers/members";
 
 const DEFAULT_COLUMNS = [
   "Property",
@@ -65,6 +73,7 @@ const BRAND = "#f30100";
 
 const getMaintainerName = (
   maintainer?: {
+    name?: string;
     firstName?: string;
     lastName?: string;
   } | null
@@ -72,6 +81,7 @@ const getMaintainerName = (
   if (!maintainer) return "Unassigned";
 
   return (
+    maintainer.name ||
     [maintainer.firstName, maintainer.lastName].filter(Boolean).join(" ") ||
     "Unassigned"
   );
@@ -110,7 +120,14 @@ const Maintenance = () => {
   const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState("All Request");
   const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
+  const [updatingRepair, setUpdatingRepair] = useState<{
+    id: string;
+    status: string;
+    issueType?: string;
+  } | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const visibleColumnCount = visibleColumns.length + 1;
+  const UPDATABLE_STATUSES = ["PENDING", "APPROVED", "COMPLETED"];
 
   const {
     data: repairsResponse,
@@ -125,6 +142,71 @@ const Maintenance = () => {
     isLoading: isLoadingDetails,
     isError: isDetailsError,
   } = useGetRepairById(selectedRepairId);
+
+  // Fetch members
+  const { data: membersResponse, isLoading: isLoadingMembers } =
+    useGetMembers();
+
+  // Fetch properties
+  const { data: propertiesResponse, isLoading: isLoadingProperties } =
+    useGetRepairProperties();
+
+  // Fetch units
+  const { data: unitsResponse, isLoading: isLoadingUnits } =
+    useGetRepairUnits();
+
+  // Fetch maintainers
+  const { data: maintainersResponse, isLoading: isLoadingMaintainers } =
+    useGetRepairMaintainers();
+
+  // Normalize dropdown options
+  const members = useMemo(
+    () =>
+      (membersResponse?.data ?? []).map((member) => ({
+        id: member.id,
+        name:
+          member.name ||
+          [member.firstName, member.lastName].filter(Boolean).join(" ") ||
+          "Unnamed Member",
+      })),
+    [membersResponse]
+  );
+
+  const properties = propertiesResponse ?? [];
+  const units = unitsResponse ?? [];
+  const maintainers = maintainersResponse ?? [];
+
+  const isLoadingRepairOptions =
+    isLoadingMembers ||
+    isLoadingProperties ||
+    isLoadingUnits ||
+    isLoadingMaintainers;
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const { callApi: createAdminRepair, isLoading: isCreating } =
+    useCreateAdminRepair();
+
+  const handleCreateRepair = async (formData: FormData) => {
+    try {
+      await createAdminRepair(formData);
+
+      toast.success("Repair request created successfully.");
+
+      setShowCreateModal(false);
+
+      await refetch();
+    } catch (createError) {
+      console.error("CREATE REPAIR ERROR:", createError);
+
+      const message =
+        createError instanceof Error
+          ? createError.message
+          : "Unable to create repair request.";
+
+      toast.error(message);
+    }
+  };
 
   // The approval hook is tied to the selected ID. The table action opens the
   // details modal first, so the hook has the correct ID before approval runs.
@@ -161,9 +243,14 @@ const Maintenance = () => {
       });
   }, [repairs, searchQuery, statusFilter]);
 
-  const totalPages = repairsResponse?.meta?.totalPages ?? 1;
-  const safeCurrentPage = Math.min(currentPage, Math.max(totalPages, 1));
-  const currentRequests = filteredRequests; 
+  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / pageSize));
+
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const currentRequests = filteredRequests.slice(
+    (safeCurrentPage - 1) * pageSize,
+    safeCurrentPage * pageSize
+  );
 
   useEffect(() => {
     setCurrentPage(1);
@@ -267,13 +354,14 @@ const Maintenance = () => {
           Maintenance Request
         </h2>
 
-        {/* <button
+        <button
           type="button"
-          className="flex items-center gap-2 px-4 py-2 text-sm text-white transition-colors"
-          style={{ ...FONT, borderRadius: 8, backgroundColor: BRAND }}
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-white"
+          style={{ ...FONT, backgroundColor: BRAND }}
         >
           + Create Maintenance Request
-        </button> */}
+        </button>
       </div>
 
       <Card
@@ -429,7 +517,7 @@ const Maintenance = () => {
               {isLoading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={COLUMNS.length}
+                    colSpan={visibleColumnCount}
                     className="py-8 text-center"
                   >
                     Loading repair requests...
@@ -438,7 +526,7 @@ const Maintenance = () => {
               ) : isError ? (
                 <TableRow>
                   <TableCell
-                    colSpan={COLUMNS.length}
+                    colSpan={visibleColumnCount}
                     className="py-8 text-center"
                   >
                     <p className="text-red-500">
@@ -458,7 +546,7 @@ const Maintenance = () => {
               ) : currentRequests.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={COLUMNS.length}
+                    colSpan={visibleColumnCount}
                     className="py-8 text-center"
                   >
                     No repair requests found.
@@ -521,7 +609,7 @@ const Maintenance = () => {
                       </TableCell>
                     )}
 
-                    <TableCell className="text-right">
+                    <TableCell className="text-left">
                       <RowActionsMenu>
                         {(close) => (
                           <>
@@ -535,15 +623,21 @@ const Maintenance = () => {
                               View
                             </RowAction>
 
-                            {request.status === "PENDING" && (
+                            {UPDATABLE_STATUSES.includes(
+                              request.status?.toUpperCase()
+                            ) && (
                               <RowAction
                                 onClick={() => {
-                                  openDetails(request.id);
                                   close();
+                                  setUpdatingRepair({
+                                    id: request.id,
+                                    status: request.status,
+                                    issueType: request.issueType,
+                                  });
                                 }}
                               >
-                                <Edit className="h-4 w-4" />
-                                Approve
+                                <RefreshCw className="h-4 w-4" />
+                                Update status
                               </RowAction>
                             )}
                           </>
@@ -715,14 +809,13 @@ const Maintenance = () => {
                 {repairDetails.issueDocument && (
                   <div>
                     <p className="mb-1 text-gray-500">Attachment</p>
-                    <a
+                    {/* <a
                       href={repairDetails.issueDocument}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#f30100] underline"
-                    >
-                      View attachment
-                    </a>
+                    ></a> */}
+                    <img src={repairDetails.issueDocument} alt="Issue Document" />
                   </div>
                 )}
 
@@ -745,6 +838,28 @@ const Maintenance = () => {
             )}
           </div>
         </div>
+      )}
+
+      {showCreateModal && (
+        <CreateRepairRequestModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateRepair}
+          isSubmitting={isCreating}
+          members={members}
+          properties={properties}
+          units={units}
+          maintainers={maintainers}
+          isLoadingOptions={isLoadingRepairOptions}
+        />
+      )}
+      {updatingRepair && (
+        <UpdateRepairStatusModal
+          key={updatingRepair.id}
+          isOpen
+          onClose={() => setUpdatingRepair(null)}
+          repair={updatingRepair}
+        />
       )}
     </div>
   );

@@ -61,8 +61,9 @@ const Users = () => {
   const [visibleColumns, setVisibleColumns] = useState([
     "User",
     "Email",
-    "Phone Number",
+    // "Phone Number",
     "Status",
+    "Assign Role",
   ]);
 
 

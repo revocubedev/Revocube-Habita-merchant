@@ -146,6 +146,7 @@ const ProfileForm = ({ id, profile }: { id: string; profile: Profile }) => {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled
             required
             className={inputClass}
             style={inputStyle}
