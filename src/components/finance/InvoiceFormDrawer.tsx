@@ -9,6 +9,7 @@ import { InvoiceSummary } from './InvoiceDetails';
 
 import { useGetPropertyOptions } from '@/api/api_controllers/unitController';
 import { useGetReceivingAccounts } from '@/api/api_controllers/receivingAccountController';
+import { extractTypes, useGetInvoiceTypes } from '@/api/api_controllers/types';
 import {
   useInvoiceUnitOptions,
   useSaveInvoice,
@@ -16,7 +17,6 @@ import {
 
 import {
   FREQUENCIES,
-  INVOICE_TYPES,
   Invoice,
   InvoiceValues,
   invoiceLabel,
@@ -51,7 +51,7 @@ export default function InvoiceFormDrawer({
             invoice.receivingAccountId || invoice.receivingAccount?.id || '',
         }
       : {
-          type: 'SECURITY',
+          type: '',
           payment: 'RECURRING_PAYMENT',
           frequency: 'MONTHLY',
           amount: 0,
@@ -73,6 +73,14 @@ export default function InvoiceFormDrawer({
 
   const propertyQuery = useGetPropertyOptions();
   const unitQuery = useInvoiceUnitOptions();
+  const {
+    data: invoiceTypesData,
+    isLoading: loadingInvoiceTypes,
+    isError: invoiceTypesError,
+  } = useGetInvoiceTypes();
+  const invoiceTypes = extractTypes(invoiceTypesData);
+  const currentTypeIsMissing =
+    !!form.type && !invoiceTypes.some((type) => type.value === form.type);
 
   const { accounts } = useGetReceivingAccounts();
 
@@ -226,11 +234,25 @@ export default function InvoiceFormDrawer({
               <select
                 className={inputCls}
                 value={form.type}
+                required
+                disabled={loadingInvoiceTypes || (invoiceTypes.length === 0 && !form.type)}
                 onChange={e => set('type', e.target.value)}
               >
-                {[...new Set([...INVOICE_TYPES, form.type])].map(t => (
-                  <option key={t} value={t}>
-                    {invoiceLabel(t)}
+                <option value="">
+                  {loadingInvoiceTypes
+                    ? 'Loading invoice types...'
+                    : invoiceTypesError
+                    ? 'Could not load invoice types'
+                    : invoiceTypes.length === 0
+                    ? 'No invoice types available'
+                    : 'Select invoice type'}
+                </option>
+                {currentTypeIsMissing && (
+                  <option value={form.type}>{invoiceLabel(form.type)}</option>
+                )}
+                {invoiceTypes.map((type) => (
+                  <option key={type.id} value={type.value}>
+                    {type.label}
                   </option>
                 ))}
               </select>
