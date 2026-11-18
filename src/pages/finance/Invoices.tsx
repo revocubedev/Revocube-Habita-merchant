@@ -33,8 +33,8 @@ import {
   useGetInvoice,
 } from '@/api/api_controllers/invoiceController';
 import { useGetPropertyOptions } from '@/api/api_controllers/unitController';
+import { extractTypes, useGetInvoiceTypes } from '@/api/api_controllers/types';
 import {
-  INVOICE_TYPES,
   Invoice,
   invoiceLabel,
   invoiceMoney,
@@ -120,6 +120,12 @@ const Invoices = () => {
   // Queries
   const query = useGetInvoices(currentPage, pageSize, typeFilter, propertyFilter);
   const { properties } = useGetPropertyOptions();
+  const {
+    data: invoiceTypesData,
+    isLoading: loadingInvoiceTypes,
+    isError: invoiceTypesError,
+  } = useGetInvoiceTypes(filterOpen);
+  const invoiceTypes = extractTypes(invoiceTypesData);
 
   const totalPages = Math.max(1, query.meta?.totalPages || 1);
 
@@ -363,16 +369,19 @@ const Invoices = () => {
                 }}
               >
                 <option value="">All types</option>
-                {[
-                  ...new Set([
-                    ...INVOICE_TYPES,
-                    ...query.invoices.map((inv) => inv.type),
-                  ]),
-                ].map((type) => (
-                  <option key={type} value={type}>
-                    {invoiceLabel(type)}
+                {loadingInvoiceTypes && <option disabled>Loading invoice types...</option>}
+                {invoiceTypesError && <option disabled>Could not load invoice types</option>}
+                {!loadingInvoiceTypes && !invoiceTypesError && invoiceTypes.length === 0 && (
+                  <option disabled>No invoice types available</option>
+                )}
+                {invoiceTypes.map((type) => (
+                  <option key={type.id} value={type.value}>
+                    {type.label}
                   </option>
                 ))}
+                {typeFilter && !invoiceTypes.some((type) => type.value === typeFilter) && (
+                  <option value={typeFilter}>{invoiceLabel(typeFilter)}</option>
+                )}
               </select>
             </label>
 

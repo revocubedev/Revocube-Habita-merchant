@@ -2,10 +2,6 @@
 import { z } from 'zod';
 
 
-export const INVOICE_TYPES = ['DAMAGES', 'SECURITY', 'OTHER'] as const;
-
-export type InvoiceType = (typeof INVOICE_TYPES)[number];
-
 export const FREQUENCIES = ['MONTHLY', 'YEARLY'] as const;
 
 
