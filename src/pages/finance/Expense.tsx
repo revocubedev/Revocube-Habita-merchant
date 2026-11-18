@@ -820,8 +820,8 @@ function ExpenseModal({
                   onChange={(event) =>
                     change("amount", formatAmount(event.target.value))
                   }
-                  value={formatAmount(form.amount)}
-                  onChange={(e) => change("amount", cleanAmount(e.target.value))}
+                  // value={formatAmount(form.amount)}
+                  // onChange={(e) => change("amount", cleanAmount(e.target.value))}
                   className={inputClass}
                 />
               </label>

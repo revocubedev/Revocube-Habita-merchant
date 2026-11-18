@@ -3,7 +3,6 @@ import useGetApiManager from "../useGetApiManager";
 
 export interface PropertyInput {
   name?: string;
-  propertyType?: string;
   address?: string;
   city?: string;
   state?: string;
@@ -12,12 +11,14 @@ export interface PropertyInput {
   description?: string;
   thumbnailImage?: File;
   propertyImage?: File;
+  propertyTypeId?: string;
 }
 export type Property = Record<string, unknown> & {
   id: string;
   name?: string;
   description?: string;
   propertyType?: string;
+  propertyTypeId?: string;
   address?: string;
   city?: string;
   state?: string;
@@ -84,10 +85,21 @@ function validatePayload(values: PropertyInput): void {
 
 export function toPropertyFormData(values: PropertyInput): FormData {
   const form = new FormData();
-  for (const key of ['name', 'propertyType', 'address', 'city', 'state', 'country', 'zipCode', 'description', 'thumbnailImage', 'propertyImage'] as const) {
+  for (const key of [
+    "name",
+    "propertyTypeId",
+    "address",
+    "city",
+    "state",
+    "country",
+    "zipCode",
+    "description",
+    "thumbnailImage",
+    "propertyImage",
+  ] as const) {
     const value = values[key];
     if (value === undefined || value === null) continue;
-    form.append(key, value instanceof Blob ? value : key === 'propertyType' ? value.trim().toUpperCase() : value);
+    form.append(key, value);
   }
   return form;
 }
@@ -143,7 +155,8 @@ export const useCreateProperty = () => {
     requireEstate();
     validatePayload(values);
     if (!values.name?.trim()) throw new Error("Property name is required");
-    if (!values.propertyType?.trim()) throw new Error("Property type is required");
+    if (!values.propertyTypeId?.trim())
+      throw new Error("Property type is required");
     return api.callApi(toPropertyFormData(values));
   };
 
