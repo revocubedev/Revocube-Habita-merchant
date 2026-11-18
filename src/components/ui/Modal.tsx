@@ -1,15 +1,40 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+export const inputCls =
+  'w-full px-3.5 py-2.5 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-text/20';
+
+export function Field({ label, children, className }: { label: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <label className={cn('block', className)}>
+      <span className="block text-sm font-medium mb-1.5 text-muted-foreground">{label}</span>
+      {children}
+    </label>
+  );
+}
 
 export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showCloseButton?: boolean;
+  align?: 'start' | 'center';
+  bodyClassName?: string;
+  presentation?: 'modal' | 'drawer';
+  closeIcon?: React.ReactNode;
+  variant?: 'modal' | 'drawer';
 }
+
+const sizes = {
+  sm: 'max-w-[420px]',
+  md: 'max-w-[560px]',
+  lg: 'max-w-[720px]',
+  xl: 'max-w-[960px]',
+};
 
 const Modal = ({
   isOpen,
@@ -18,62 +43,99 @@ const Modal = ({
   children,
   size = 'md',
   showCloseButton = true,
+  align = 'center',
+  presentation = 'modal',
+  closeIcon,
+  bodyClassName = 'px-6 py-5',
+  variant = 'modal',
 }: ModalProps) => {
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const sizes = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Backdrop */}
+  if (variant === 'drawer') {
+    return createPortal(
       <div
-        className="absolute inset-0 bg-black/50 animate-fade-in"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div
-        className={cn(
-          'relative w-full mx-4 bg-card rounded-lg shadow-lg animate-slide-up max-h-[90vh] flex flex-col',
-          sizes[size]
-        )}
+        className="fixed inset-0 z-[100] flex justify-end"
+        style={{ fontFamily: 'Poppins, sans-serif', backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+        role="dialog"
+        aria-modal="true"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border flex-shrink-0">
-          <h2 className="text-lg font-medium text-foreground" style={{ fontFamily: 'Poppins' }}>
-            {title}
-          </h2>
+        <div
+          className="h-full w-full sm:max-w-[640px] flex flex-col bg-card text-card-foreground border-l border-border shadow-lg animate-in slide-in-from-right duration-300"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+            <h2 className="font-medium text-[16px] text-foreground">{title}</h2>
+            {showCloseButton && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-9 h-9 rounded-full bg-muted hover:bg-border flex items-center justify-center transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+          <div className={cn('overflow-y-auto flex-1 min-h-0', bodyClassName)}>
+            {children}
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
+  // Portal to body so page transforms/animations can't trap the fixed overlay.
+  return createPortal(
+    <div
+      className={cn(
+        'fixed inset-0 z-[100] flex overflow-y-auto',
+        presentation === 'drawer' ? 'justify-end' : 'justify-center px-6',
+        presentation === 'drawer' ? 'items-start' : align === 'center' ? 'items-center py-6' : 'items-start py-10'
+      )}
+      style={{ fontFamily: 'Poppins, sans-serif', backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className={cn('w-full flex flex-col bg-card text-card-foreground shadow-lg', presentation === 'drawer' ? 'h-dvh max-w-[622px]' : ['max-h-[calc(100vh-3rem)] rounded-2xl border border-border', sizes[size]])}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className={cn('flex items-center justify-between border-b border-border shrink-0', presentation === 'drawer' ? 'h-[50px] px-8 border-[#eaeaea]' : 'px-6 py-4')}>
+          <h2 className={cn('text-foreground', presentation === 'drawer' ? 'text-sm font-medium' : 'font-semibold text-[16px]')}>{title}</h2>
           {showCloseButton && (
             <button
+              type="button"
               onClick={onClose}
-              className="p-1 rounded-lg hover:bg-muted transition-colors"
-              aria-label="Close modal"
+              className={cn('rounded-full hover:bg-border flex items-center justify-center transition-colors', presentation === 'drawer' ? 'h-[26px] w-[26px] bg-[#f6f6f6]' : 'w-9 h-9 bg-muted')}
+              aria-label="Close"
             >
-              <X className="w-5 h-5 text-muted-foreground" />
+              {closeIcon ?? <X className="w-4 h-4 text-muted-foreground" />}
             </button>
           )}
         </div>
-
-        {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">{children}</div>
+        <div className={cn('overflow-y-auto flex-1 min-h-0', bodyClassName)}>{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

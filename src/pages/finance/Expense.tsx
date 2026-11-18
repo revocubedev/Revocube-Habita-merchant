@@ -1,328 +1,1281 @@
-import { useState, useEffect } from 'react';
-import { Search, MoreHorizontal, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2, Eye, Download } from 'lucide-react';
-import Card from '@/components/ui/Card';
-import { CardContent } from '@/components/ui/Card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import { mockExpenses } from '@/lib/mockData';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
+// import RowActionsMenu from "@/components/ui/RowActionsMenu";
+// import { RowAction } from "@/components/ui/RowActionsMenu";
+import { ChevronDown, FileSpreadsheet } from "lucide-react";
+import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
+// TODO: adjust these three paths to match your project.
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Modal from "@/components/ui/Modal";
+import * as XLSX from "xlsx";
+import {
+  useCreateExpense,
+  useUpdateExpense,
+  useDeleteExpense,
+  useGetExpensesCall,
+  type Expense as ApiExpense,
+  type ExpenseInput,
+} from "@/api/api_controllers/expenses";
 
-const Expense = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showColumnMenu, setShowColumnMenu] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showRowMenu, setShowRowMenu] = useState<string | null>(null);
-  const [visibleColumns, setVisibleColumns] = useState(['Expense', 'Title', 'Property', 'Unit', 'Type', 'Date', 'Amount', 'Receipt', 'Actions']);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+type Mode = "create" | "edit" | "view";
 
-  const filteredExpenses = mockExpenses.filter((expense) =>
-    expense.expense.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    expense.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    expense.property.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    expense.unit.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    expense.type.toLowerCase().includes(searchQuery.toLowerCase())
+type ExpenseForm = {
+  title: string;
+  issueType: string;
+  amount: string;
+  date: string;
+  notes: string;
+  receipt: File | null;
+  property: string;
+  unit: string;
+};
+
+const emptyForm = (): ExpenseForm => ({
+  title: "",
+  issueType: "",
+  amount: "",
+  date: "",
+  notes: "",
+  receipt: null,
+  property: "",
+  unit: "",
+});
+
+const ISSUE_TYPES = [
+  "security",
+  "diesel",
+  "power",
+  "water",
+  "cleaning",
+  "repair",
+  "other",
+];
+
+const inputClass =
+  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm disabled:opacity-60";
+
+const buttonClass =
+  "rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-50";
+
+const columns = [
+  "Expense",
+  "Title",
+  "Property",
+  "Unit",
+  "Type",
+  "Date",
+  "Amount",
+  "Receipt",
+];
+
+/**
+ * Formats an amount with thousand separators.
+ *
+ * Examples:
+ * 1500       -> 1,500
+ * 1500000    -> 1,500,000
+ * 1500000.5  -> 1,500,000.5
+ * 1500000.50 -> 1,500,000.50
+ */
+function formatAmount(value: string): string {
+  const cleaned = value.replace(/[^\d.]/g, "");
+
+  const decimalIndex = cleaned.indexOf(".");
+  const hasDecimal = decimalIndex !== -1;
+
+  const integerPart = hasDecimal ? cleaned.slice(0, decimalIndex) : cleaned;
+
+  const decimalPart = hasDecimal
+    ? cleaned
+        .slice(decimalIndex + 1)
+        .replace(/\./g, "")
+        .slice(0, 2)
+    : "";
+
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  return hasDecimal ? `${formattedInteger}.${decimalPart}` : formattedInteger;
+}
+
+/**
+ * Removes commas before sending the amount to the API.
+ */
+function parseAmount(value: string): number {
+  return Number(value.replace(/,/g, ""));
+}
+
+// The API may return property/unit as a string or as { id, name }
+function labelOf(value: unknown): string {
+  if (typeof value === "string") return value;
+
+  if (value && typeof value === "object") {
+    const v = value as { name?: unknown; unitNumber?: unknown };
+    return String(v.name ?? v.unitNumber ?? "");
+  }
+
+  return "";
+}
+
+function currency(value: number | string): string {
+  const amount = Number(value);
+
+  return Number.isFinite(amount)
+    ? `₦${amount.toLocaleString("en-NG")}`
+    : String(value);
+}
+
+function displayDate(value?: string): string {
+  if (!value) return "—";
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+}
+// function formatAmount(raw: string): string {
+//   if (!raw) return "";
+//   const [int, dec] = raw.split(".");
+//   const withCommas = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+//   return dec !== undefined ? `${withCommas}.${dec}` : withCommas;
+// }
+
+function cleanAmount(input: string): string {
+  const cleaned = input.replace(/[^\d.]/g, "");
+  const [int, ...rest] = cleaned.split(".");
+  return rest.length ? `${int}.${rest.join("").slice(0, 2)}` : int;
+}
+function inputDate(value?: string): string {
+  if (!value) return "";
+
+  const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+  return match?.[0] ?? "";
+}
+
+function receiptLink(value?: string | null): string | undefined {
+  if (!value) return undefined;
+
+  try {
+    const url = new URL(value, window.location.origin);
+
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      return url.href;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "Something went wrong. Please try again.";
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="block text-sm">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+/*
+ * Each row owns its delete hook so the ID is available
+ * before the user clicks Delete.
+ */
+function ExpenseActions({
+  id,
+  onView,
+  onEdit,
+}: {
+  id: string;
+  onView: () => void;
+  onEdit: () => void;
+}) {
+  const { deleteExpense, isLoading } = useDeleteExpense(id);
+  const [error, setError] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const deleteRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    cancelRef.current?.focus();
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+
+      triggerRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    };
+  }, [isOpen]);
+
+  const handleDelete = async () => {
+    if (isLoading) return;
+
+    setError("");
+
+    try {
+      await deleteExpense();
+      setIsOpen(false);
+      // The controller invalidates get_expenses automatically.
+    } catch (err) {
+      setError(errorText(err));
+    }
+  };
+
+  return (
+    <span ref={triggerRef}>
+      <RowActionsMenu
+        label={`Actions for expense ${id}`}
+        panelWidth={186}
+        triggerIcon={
+          <img src="/assets/ellipsis.svg" alt="" width={24} height={24} />
+        }
+        panelClassName="flex flex-col gap-2 rounded-[5px] bg-white px-3 py-[15px] shadow-[0_10px_20px_rgba(0,0,0,0.05)]"
+        panelStyle={{ borderRadius: 5, borderColor: "#eaecf0" }}
+      >
+        {(close) => (
+          <>
+            <RowAction
+              disabled={isLoading}
+              className="h-9 whitespace-nowrap rounded-[5px] px-4 text-[#5f5f5f]"
+              onClick={() => {
+                close();
+                onView();
+              }}
+            >
+              <img src="/assets/view.svg" alt="" width={14} height={14} />
+              View
+            </RowAction>
+
+            <RowAction
+              disabled={isLoading}
+              className="h-9 whitespace-nowrap rounded-[5px] px-4 text-[#5f5f5f]"
+              onClick={() => {
+                close();
+                onEdit();
+              }}
+            >
+              <img src="/assets/edit.svg" alt="" width={14} height={14} />
+              Edit
+            </RowAction>
+
+            <RowAction
+              disabled={isLoading}
+              className="h-9 whitespace-nowrap rounded-[5px] bg-[#ffedee] px-4 text-[#ff383c] hover:bg-[#ffdde0]"
+              onClick={() => {
+                close();
+                setError("");
+                setIsOpen(true);
+              }}
+            >
+              <img src="/assets/delete.svg" alt="" width={14} height={14} />
+              Delete
+            </RowAction>
+          </>
+        )}
+      </RowActionsMenu>
+
+      {isOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/40 p-4"
+            style={{ fontFamily: "Poppins, sans-serif" }}
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !isLoading) {
+                setIsOpen(false);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !isLoading) {
+                setIsOpen(false);
+              }
+
+              if (event.key === "Tab") {
+                event.preventDefault();
+
+                const next =
+                  document.activeElement === cancelRef.current
+                    ? deleteRef.current
+                    : cancelRef.current;
+
+                next?.focus();
+              }
+            }}
+          >
+            <section
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby={`delete-expense-title-${id}`}
+              aria-describedby={`delete-expense-description-${id}`}
+              aria-busy={isLoading}
+              className="w-full max-w-[616px] rounded-lg border border-[#e9e9e9] bg-white px-5 pb-[54px] pt-8 text-center shadow-[0_8px_8px_0_rgba(0,0,0,0.1)] sm:px-8"
+            >
+              <div className="mx-auto mb-6 flex h-[70px] w-[70px] items-center justify-center rounded-full bg-[#fff4ca] shadow-[0_1px_2px_rgba(0,0,0,0.1)]">
+                <img
+                  src="/assets/expense-delete-warning.svg"
+                  alt=""
+                  width={38}
+                  height={38}
+                />
+              </div>
+
+              <h2
+                id={`delete-expense-title-${id}`}
+                className="text-2xl font-semibold leading-[1.4] text-[#393939]"
+              >
+                Are you sure you want to delete this record?
+              </h2>
+
+              <p
+                id={`delete-expense-description-${id}`}
+                className="mx-auto mt-[6px] max-w-[378px] text-base leading-[1.4] text-[#4c4c4c]"
+              >
+                This record can not be restored after delete. Do you want to
+                confirm?
+              </p>
+
+              {error && (
+                <p role="alert" className="mt-4 text-sm text-red-600">
+                  {error}
+                </p>
+              )}
+
+              <div className="mt-10 flex justify-center gap-3">
+                <Button
+                  ref={cancelRef}
+                  type="button"
+                  variant="outline"
+                  disabled={isLoading}
+                  onClick={() => setIsOpen(false)}
+                  className="h-11 w-[109px] border-[#eaeaea] bg-white font-semibold text-[#4c4c4c]"
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  ref={deleteRef}
+                  type="button"
+                  disabled={isLoading}
+                  onClick={() => void handleDelete()}
+                  className="h-11 w-[109px] bg-brand-text font-semibold text-white hover:bg-brand-text/90"
+                >
+                  {isLoading ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
+            </section>
+          </div>,
+          document.body
+        )}
+    </span>
+  );
+}
+
+function ExpenseModal({
+  mode,
+  expense,
+  onClose,
+  expenses = [],
+}: {
+  mode: Mode;
+  expense?: ApiExpense;
+  onClose: () => void;
+  expenses?: ApiExpense[];
+}) {
+  const readOnly = mode === "view";
+
+  const [form, setForm] = useState<ExpenseForm>(() =>
+    expense
+      ? {
+          title: expense.title,
+          issueType: (expense.issueType ?? expense.type ?? "").toLowerCase(),
+          amount:
+            expense.amount === undefined || expense.amount === null
+              ? ""
+              : formatAmount(String(expense.amount)),
+          date: inputDate(expense.date),
+          notes: expense.notes ?? "",
+          receipt: null,
+          property: labelOf(expense.property),
+          unit: labelOf(expense.unit),
+        }
+      : emptyForm()
   );
 
-  const columns = [
-    { id: 'Expense', label: 'Expense' },
-    { id: 'Title', label: 'Title' },
-    { id: 'Property', label: 'Property' },
-    { id: 'Unit', label: 'Unit' },
-    { id: 'Type', label: 'Type' },
-    { id: 'Date', label: 'Date' },
-    { id: 'Amount', label: 'Amount' },
-    { id: 'Receipt', label: 'Receipt' },
-    { id: 'Actions', label: 'Actions' },
-  ];
+  const [error, setError] = useState("");
 
-  const totalPages = Math.ceil(filteredExpenses.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const currentExpenses = filteredExpenses.slice(startIndex, endIndex);
+  const create = useCreateExpense();
+  const update = useUpdateExpense(expense?.id);
+
+  const busy = create.isLoading || update.isLoading;
+
+  function change<K extends keyof ExpenseForm>(key: K, value: ExpenseForm[K]) {
+    setForm((previous) => ({ ...previous, [key]: value }));
+  }
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (readOnly || busy) return;
+
+    setError("");
+
+    // Remove thousand separators before converting to a number.
+    const amount = parseAmount(form.amount);
+
+    if (!form.amount.trim() || !Number.isFinite(amount) || amount <= 0) {
+      setError("Amount must be greater than zero");
+      return;
+    }
+
+    const payload: ExpenseInput = {
+      title: form.title.trim(),
+      issueType: form.issueType.trim().toUpperCase(),
+      amount,
+      date: form.date,
+      notes: form.notes,
+      receipt: form.receipt ?? undefined,
+      ...(mode === "edit" ? { property: form.property, unit: form.unit } : {}),
+    };
+
+    try {
+      if (mode === "edit") {
+        await update.updateExpense(payload);
+      } else {
+        await create.createExpense(payload);
+      }
+
+      onClose();
+    } catch (err) {
+      setError(errorText(err));
+    }
+  };
+
+  const receipt = receiptLink(expense?.receipt);
+
+  if (mode === "edit") {
+    const controlClass =
+      "h-12 border-[#eaeaea] bg-white px-5 text-base leading-[1.4] text-[#4c4c4c] placeholder:text-[#a1a1a1]";
+
+    const properties = [
+      ...new Set(
+        [
+          form.property,
+          ...expenses.map((item) => labelOf(item.property)),
+        ].filter(Boolean)
+      ),
+    ];
+
+    const units = [
+      ...new Set(
+        [
+          form.unit,
+          ...expenses
+            .filter((item) => labelOf(item.property) === form.property)
+            .map((item) => labelOf(item.unit)),
+        ].filter(Boolean)
+      ),
+    ];
+
+    const expenseNumber = expense?.expenseNumber || `#EXP-${expense?.id ?? ""}`;
+
+    const numberParts = expenseNumber.match(/^(#EXP-0*)(.+)$/);
+
+    const selectArrow = (
+      <img
+        src="/assets/expense-edit-chevron.svg"
+        alt=""
+        width={18}
+        height={18}
+        className="pointer-events-none absolute right-5 top-[15px]"
+      />
+    );
+
+    return (
+      <Modal
+        isOpen
+        onClose={() => {
+          if (!busy) onClose();
+        }}
+        title="Edit Expense"
+        presentation="drawer"
+        closeIcon={
+          <img
+            src="/assets/expense-edit-close.svg"
+            alt=""
+            width={14}
+            height={14}
+          />
+        }
+        bodyClassName="relative px-5 pb-8 pt-[35px] sm:px-8"
+      >
+        <div className="pointer-events-none absolute right-0 top-[259px] h-[50.301px] w-[16.04px] overflow-hidden">
+          <img
+            src="/assets/expense-edit-edge.svg"
+            alt=""
+            width={32}
+            height={32}
+          />
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {error && (
+            <p role="alert" className="mb-5 text-sm text-red-600">
+              {error}
+            </p>
+          )}
+
+          <fieldset
+            disabled={busy}
+            className="space-y-5 [&_label>span]:mb-2 [&_label>span]:leading-5 [&_label>span]:text-[#4c4c4c]"
+          >
+            <Field label="Expense Title">
+              <Input
+                autoFocus
+                required
+                value={form.title}
+                onChange={(event) => change("title", event.target.value)}
+                className={controlClass}
+                placeholder="Expense title"
+              />
+            </Field>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Field label="Expense Number">
+                <div className="flex h-12 overflow-hidden rounded-lg border border-[#eaeaea] text-base">
+                  <span className="flex shrink-0 items-center bg-[#eaeaea] px-4 text-[#727272]">
+                    {numberParts?.[1] ?? "#EXP-"}
+                  </span>
+
+                  <input
+                    aria-label="Expense Number"
+                    readOnly
+                    value={
+                      numberParts?.[2] ?? expenseNumber.replace(/^#EXP-/, "")
+                    }
+                    className="min-w-0 w-full bg-white px-6 text-[#898989] outline-none"
+                  />
+                </div>
+              </Field>
+
+              <Field label="Issue Type">
+                <div className="relative">
+                  <select
+                    required
+                    value={form.issueType}
+                    onChange={(event) =>
+                      change("issueType", event.target.value)
+                    }
+                    className={`w-full appearance-none rounded-lg border pr-12 ${controlClass}`}
+                  >
+                    <option value="" disabled>
+                      Select type
+                    </option>
+
+                    {form.issueType &&
+                      !ISSUE_TYPES.includes(form.issueType) && (
+                        <option value={form.issueType}>{form.issueType}</option>
+                      )}
+
+                    {ISSUE_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+
+                  {selectArrow}
+                </div>
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Field label="Property">
+                <div className="relative">
+                  <select
+                    value={form.property}
+                    onChange={(event) => {
+                      change("property", event.target.value);
+                      change("unit", "");
+                    }}
+                    className={`w-full appearance-none rounded-lg border pr-12 ${controlClass}`}
+                  >
+                    <option value="">Select property</option>
+
+                    {properties.map((property) => (
+                      <option key={property} value={property}>
+                        {property}
+                      </option>
+                    ))}
+                  </select>
+
+                  {selectArrow}
+                </div>
+              </Field>
+
+              <Field label="Unit">
+                <div className="relative">
+                  <select
+                    value={form.unit}
+                    onChange={(event) => change("unit", event.target.value)}
+                    className={`w-full appearance-none rounded-lg border pr-12 ${controlClass}`}
+                  >
+                    <option value="">Select unit</option>
+
+                    {units.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
+
+                  {selectArrow}
+                </div>
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Field label="Date">
+                <div className="relative">
+                  <Input
+                    required
+                    type="date"
+                    value={form.date}
+                    onChange={(event) => change("date", event.target.value)}
+                    className={`${controlClass} pr-12 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-5 [&::-webkit-calendar-picker-indicator]:z-10 [&::-webkit-calendar-picker-indicator]:opacity-0`}
+                  />
+
+                  {selectArrow}
+                </div>
+              </Field>
+
+              <Field label="Amount">
+                <Input
+                  required
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={form.amount}
+                  onChange={(event) =>
+                    change("amount", formatAmount(event.target.value))
+                  }
+                  className={controlClass}
+                />
+                <Input required type="text" inputMode="decimal" placeholder="0.00" value={formatAmount(form.amount)} onChange={(event) => change("amount", cleanAmount(event.target.value))} className={controlClass} />
+              </Field>
+            </div>
+
+            <Field label="Receipt">
+              <input
+                aria-label="Receipt"
+                type="file"
+                onChange={(event) =>
+                  change("receipt", event.target.files?.[0] ?? null)
+                }
+                className="block h-12 w-full overflow-hidden rounded-lg border border-[#eaeaea] bg-white text-base leading-[46px] text-[#4c4c4c] file:mr-6 file:h-[46px] file:w-[124px] file:border-0 file:bg-[#eaeaea] file:px-4 file:text-base file:text-[#727272]"
+              />
+
+              {receipt && (
+                <a
+                  href={receipt}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 block text-xs text-brand-text underline"
+                >
+                  Open current receipt
+                </a>
+              )}
+            </Field>
+
+            <Field label="Note">
+              <div className="relative">
+                <textarea
+                  value={form.notes}
+                  onChange={(event) => change("notes", event.target.value)}
+                  className={`block h-[126px] w-full resize-none rounded-lg border py-3 pr-12 ${controlClass.replace(
+                    "h-12 ",
+                    ""
+                  )}`}
+                />
+
+                <img
+                  src="/assets/expense-edit-note.svg"
+                  alt=""
+                  width={18}
+                  height={18}
+                  className="pointer-events-none absolute right-5 top-3"
+                />
+              </div>
+            </Field>
+          </fieldset>
+
+          <div className="mt-12 flex justify-end sm:mt-[179px]">
+            <Button
+              type="submit"
+              disabled={busy}
+              className="h-11 min-w-[101px] bg-brand-text px-6 font-semibold text-white hover:bg-brand-text/90"
+            >
+              {busy ? "Updating..." : "Update"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="expense-dialog-title"
+        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-card p-6 shadow-xl"
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h2 id="expense-dialog-title" className="text-lg font-medium">
+            {mode === "create" ? "Create Expense" : "View Expense"}
+          </h2>
+
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onClose}
+            className={buttonClass}
+          >
+            Close
+          </button>
+        </div>
+
+        {error && (
+          <p role="alert" className="mb-4 text-sm text-red-600">
+            {error}
+          </p>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <fieldset disabled={readOnly || busy} className="space-y-4">
+            <label className="block space-y-1">
+              <span>Title</span>
+
+              <input
+                required
+                value={form.title}
+                onChange={(event) => change("title", event.target.value)}
+                className={inputClass}
+              />
+            </label>
+
+            <label className="block space-y-1">
+              <span>Issue Type</span>
+
+              <select
+                required
+                value={form.issueType}
+                onChange={(event) => change("issueType", event.target.value)}
+                className={inputClass}
+              >
+                <option value="" disabled>
+                  Select an issue type
+                </option>
+
+                {ISSUE_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className="block space-y-1">
+                <span>Amount</span>
+
+                <input
+                  required
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={form.amount}
+                  onChange={(event) =>
+                    change("amount", formatAmount(event.target.value))
+                  }
+                  // value={formatAmount(form.amount)}
+                  // onChange={(e) => change("amount", cleanAmount(e.target.value))}
+                  className={inputClass}
+                />
+              </label>
+
+              <label className="block space-y-1">
+                <span>Date</span>
+
+                <input
+                  required
+                  type="date"
+                  value={form.date}
+                  onChange={(event) => change("date", event.target.value)}
+                  className={inputClass}
+                />
+              </label>
+            </div>
+
+            <label className="block space-y-1">
+              <span>Notes</span>
+
+              <textarea
+                required={mode === "create"}
+                rows={3}
+                value={form.notes}
+                onChange={(event) => change("notes", event.target.value)}
+                className={inputClass}
+              />
+            </label>
+
+            {!readOnly && (
+              <label className="block space-y-1">
+                <span>Receipt</span>
+
+                <input
+                  type="file"
+                  onChange={(event) =>
+                    change("receipt", event.target.files?.[0] ?? null)
+                  }
+                  className={inputClass}
+                />
+              </label>
+            )}
+          </fieldset>
+
+          {receipt && (
+            <a
+              href={receipt}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-sm text-red-600 underline"
+            >
+              Open current receipt
+            </a>
+          )}
+
+          {!readOnly && (
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onClose}
+                className={buttonClass}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={busy}
+                className="rounded-lg bg-[#f30100] px-4 py-2 text-sm text-white disabled:opacity-50"
+              >
+                {busy ? "Saving..." : "Save Expense"}
+              </button>
+            </div>
+          )}
+        </form>
+      </section>
+    </div>
+  );
+}
+
+export default function Expense() {
+  const code = localStorage.getItem("code") ?? "";
+  const query = useGetExpensesCall();
+
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [showColumns, setShowColumns] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(columns);
+
+  const [modal, setModal] = useState<{
+    mode: Mode;
+    expense?: ApiExpense;
+  } | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.column-menu-container') && !target.closest('.export-menu-container') && !target.closest('.row-menu-container')) {
-        setShowColumnMenu(false);
-        setShowExportMenu(false);
-        setShowRowMenu(null);
+      if (!(event.target as HTMLElement).closest('.expense-column-menu-container')) {
+        setShowColumns(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  return (
-    <div className="space-y-4">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm" style={{ fontFamily: 'Poppins' }}>
-        <span className="text-muted-foreground">Finance</span>
-        <span className="text-muted-foreground">/</span>
-        <span className="text-brand-text font-medium" style={{ color: '#f30100' }}>Expenses</span>
-      </div>
+  const response = query.data;
 
-      {/* Section Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-[16px] font-display font-medium text-foreground" style={{ fontFamily: 'Poppins', fontWeight: 500, color: '#4c4c4c' }}>
-          Expense List
-        </h2>
+  const loadError = !code.trim()
+    ? "Estate code is missing. Select or sign in to your estate first."
+    : query.error
+    ? errorText(query.error)
+    : "";
+
+  const expenses = !loadError ? response?.data ?? [] : [];
+
+  const term = search.trim().toLowerCase();
+
+  const filtered = expenses.filter((expense) =>
+    [
+      expense.expenseNumber,
+      expense.title,
+      labelOf(expense.property),
+      labelOf(expense.unit),
+      expense.issueType,
+      expense.type,
+    ].some((value) =>
+      String(value ?? "")
+        .toLowerCase()
+        .includes(term)
+    )
+  );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const activePage = Math.min(page, totalPages);
+  const start = (activePage - 1) * pageSize;
+  const currentExpenses = filtered.slice(start, start + pageSize);
+
+  const loading = Boolean(code.trim()) && query.isLoading;
+
+  const shownColumns = columns.filter((name) => visibleColumns.includes(name));
+
+  const cellValue = (expense: ApiExpense, column: string): string => {
+    switch (column) {
+      case "Expense":
+        return expense.expenseNumber || `#EXP-${expense.id}`;
+      case "Title":
+        return expense.title;
+      case "Property":
+        return labelOf(expense.property) || "—";
+      case "Unit":
+        return labelOf(expense.unit) || "—";
+      case "Type":
+        return expense.issueType || expense.type || "—";
+      case "Date":
+        return displayDate(expense.date);
+      case "Amount":
+        return currency(expense.amount);
+      case "Receipt":
+        return expense.receipt ? "Attached" : "—";
+      default:
+        return "";
+    }
+  };
+
+  const exportXlsx = () => {
+    // Same rules as before: filtered rows, visible columns only.
+    const rows = filtered.map((expense) => {
+      const row: Record<string, string | number> = {};
+      for (const column of shownColumns) {
+        // Real number for Amount so Excel can sum it; text for everything else.
+        row[column] =
+          column === "Amount"
+            ? Number.isFinite(Number(expense.amount)) ? Number(expense.amount) : ""
+            : cellValue(expense, column);
+      }
+      return row;
+    });
+
+    const sheet = XLSX.utils.json_to_sheet(rows, { header: shownColumns });
+
+   // Auto-size columns.
+sheet["!cols"] = shownColumns.map((column) => ({
+  wch:
+    Math.max(
+      column.length,
+      ...rows.map((row) => {
+        const value = row[column];
+        // Amount is displayed as ₦#,##0.00, so measure that, not the raw number.
+        if (column === "Amount" && typeof value === "number") {
+          return `₦${value.toLocaleString("en-NG", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`.length;
+        }
+        return String(value ?? "").length;
+      }),
+    ) + 4,
+}));
+
+    // Show Amount as ₦ currency while keeping it numeric.
+    const amountCol = shownColumns.indexOf("Amount");
+    if (amountCol !== -1) {
+      rows.forEach((_, i) => {
+        const cell = sheet[XLSX.utils.encode_cell({ r: i + 1, c: amountCol })];
+        if (cell) cell.z = '"₦"#,##0.00';
+      });
+    }
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Expenses");
+    XLSX.writeFile(workbook, "expenses.xlsx");
+  };
+
+  return (
+    <main className="space-y-4" style={{ fontFamily: "Poppins" }}>
+      <p className="text-sm text-muted-foreground">
+        Finance / <span className="text-[#f30100]">Expenses</span>
+      </p>
+
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-lg font-medium">Expense List</h1>
+
         <button
-          className="text-sm text-white transition-colors flex items-center gap-2 px-4 py-2"
-          style={{ 
-            fontFamily: 'Poppins', 
-            borderRadius: '8px', 
-            backgroundColor: '#f30100',
-            border: 'none'
-          }}
+          type="button"
+          disabled={!code.trim()}
+          onClick={() => setModal({ mode: "create" })}
+          className="rounded-lg bg-[#f30100] px-4 py-2 text-sm text-white disabled:opacity-50"
         >
           + Create Expense
         </button>
       </div>
 
-      {/* Data Table with Toolbar */}
-      <Card 
-        className="bg-card border border-border"
-        style={{ 
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-        }}
-      >
-        <CardContent className="p-4">
-          {/* Table Toolbar */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 max-w-sm relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                placeholder="Search by name..."
-                className="w-full pl-9 pr-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-brand-text/20 transition-colors"
-                style={{ fontFamily: 'Poppins', borderColor: '#e3e3e3' }}
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
+      {loadError && (
+        <p
+          role="alert"
+          className="rounded-lg bg-red-50 p-3 text-sm text-red-600"
+        >
+          {loadError}
+        </p>
+      )}
 
-            {/* Column Visibility Dropdown */}
-            <div className="relative column-menu-container">
-              <button
-                onClick={() => setShowColumnMenu(!showColumnMenu)}
-                className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-card hover:bg-muted transition-colors"
-                style={{ fontFamily: 'Poppins', borderRadius: '8px', borderColor: '#e3e3e3' }}
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                Column Visibility
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              {showColumnMenu && (
-                <div className="absolute top-full left-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-lg p-2 z-10" style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}>
-                  {columns.filter(col => col.id !== 'Actions').map((col) => (
-                    <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-muted rounded" style={{ fontFamily: 'Poppins' }}>
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns.includes(col.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setVisibleColumns([...visibleColumns, col.id]);
-                          } else {
-                            setVisibleColumns(visibleColumns.filter((c) => c !== col.id));
-                          }
-                        }}
-                        className="rounded border-gray-300"
-                        style={{ accentColor: '#f30100' }}
-                      />
-                      {col.label}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
+      <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <input
+            aria-label="Search expenses"
+            placeholder="Search expenses..."
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            className={`${inputClass} max-w-sm`}
+          />
 
-            {/* Export Dropdown */}
-            <div className="relative export-menu-container">
-              <button
-                onClick={() => setShowExportMenu(!showExportMenu)}
-                className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-card hover:bg-muted transition-colors"
-                style={{ fontFamily: 'Poppins', borderRadius: '8px', borderColor: '#e3e3e3' }}
-              >
-                <FileText className="w-4 h-4" />
-                Export
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              {showExportMenu && (
-                <div className="absolute top-full left-0 mt-1 w-32 bg-card border border-border rounded-lg shadow-lg p-1 z-10" style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}>
-                  <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded" style={{ fontFamily: 'Poppins' }}>
-                    Excel
-                  </button>
-                  <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded" style={{ fontFamily: 'Poppins' }}>
-                    PDF
-                  </button>
-                  <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded" style={{ fontFamily: 'Poppins' }}>
-                    Copy
-                  </button>
-                </div>
-              )}
-            </div>
+          <div className="relative expense-column-menu-container">
+            <button
+              type="button"
+              onClick={() => setShowColumns((value) => !value)}
+              className="flex items-center gap-2 rounded-lg border border-[#e3e3e3] bg-card px-3 py-2 text-sm transition-colors hover:bg-muted"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Column Visibility
+              <ChevronDown className="h-4 w-4" />
+            </button>
+            {showColumns && (
+              <div className="absolute left-0 top-full z-20 mt-1 w-48 rounded-lg border border-[#e3e3e3] bg-card p-2 shadow-lg">
+                {columns.map((column) => (
+                  <label key={column} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted">
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns.includes(column)}
+                      onChange={(event) => {
+                        setVisibleColumns((previous) => event.target.checked
+                          ? [...previous, column]
+                          : previous.filter((item) => item !== column));
+                      }}
+                      className="rounded border-gray-300"
+                      style={{ accentColor: '#f30100' }}
+                    />
+                    {column}
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Table */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {columns.filter(col => visibleColumns.includes(col.id) || col.id === 'Actions').map((col) => (
-                  <TableHead key={col.id} className="text-sm font-medium">
-                    {col.label}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentExpenses.map((expense) => (
-                <TableRow key={expense.id}>
-                  {visibleColumns.includes('Expense') && (
-                    <TableCell className="font-medium">{expense.expense}</TableCell>
-                  )}
-                  {visibleColumns.includes('Title') && (
-                    <TableCell className="text-muted-foreground">{expense.title}</TableCell>
-                  )}
-                  {visibleColumns.includes('Property') && (
-                    <TableCell className="text-muted-foreground">{expense.property}</TableCell>
-                  )}
-                  {visibleColumns.includes('Unit') && (
-                    <TableCell className="text-muted-foreground">{expense.unit}</TableCell>
-                  )}
-                  {visibleColumns.includes('Type') && (
-                    <TableCell className="text-muted-foreground">{expense.type}</TableCell>
-                  )}
-                  {visibleColumns.includes('Date') && (
-                    <TableCell className="text-muted-foreground">{expense.date}</TableCell>
-                  )}
-                  {visibleColumns.includes('Amount') && (
-                    <TableCell className="text-muted-foreground">{expense.amount}</TableCell>
-                  )}
-                  {visibleColumns.includes('Receipt') && (
-                    <TableCell className="text-muted-foreground">
-                      {expense.hasReceipt ? (
-                        <button className="text-brand-text hover:opacity-80" style={{ color: '#f30100' }}>
-                          <Download className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <span>-</span>
-                      )}
-                    </TableCell>
-                  )}
-                  <TableCell className="text-right relative row-menu-container">
-                    <button
-                      onClick={() => setShowRowMenu(showRowMenu === expense.id ? null : expense.id)}
-                      className="p-1 hover:bg-muted rounded"
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                    {showRowMenu === expense.id && (
-                      <div className="absolute right-0 top-full mt-1 w-32 bg-card border border-border rounded-lg shadow-lg p-1 z-10" style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}>
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2">
-                          <Eye className="w-4 h-4" />
-                          View
-                        </button>
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2">
-                          <Edit className="w-4 h-4" />
-                          Edit
-                        </button>
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2 text-brand-text" style={{ color: '#f30100' }}>
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+          <button
+            type="button"
+            onClick={exportXlsx}
+            disabled={!code.trim() || filtered.length === 0}
+            className={buttonClass}
+          >
+            Export
+          </button>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground" style={{ fontFamily: 'Poppins' }}>
-            Show
-          </span>
+          <button
+            type="button"
+            disabled={!code.trim() || query.isFetching}
+            onClick={() => void query.refetch()}
+            className={buttonClass}
+          >
+            {query.isFetching ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
+
+        {showColumns && (
+          <div className="mb-4 flex flex-wrap gap-4 rounded-lg border p-3">
+            {columns.map((column) => (
+              <label key={column} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={visibleColumns.includes(column)}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+
+                    setVisibleColumns((previous) =>
+                      checked
+                        ? [...previous, column]
+                        : previous.filter((item) => item !== column)
+                    );
+                  }}
+                />
+
+                {column}
+              </label>
+            ))}
+          </div>
+        )}
+
+        {loading && <p className="py-4 text-sm">Loading expenses...</p>}
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b">
+                {shownColumns.map((column) => (
+                  <th key={column} className="p-3 font-medium">
+                    {column}
+                  </th>
+                ))}
+
+                <th className="p-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {!loading &&
+                currentExpenses.map((expense) => (
+                  <tr key={expense.id} className="border-b">
+                    {shownColumns.map((column) => {
+                      const receipt = receiptLink(expense.receipt);
+
+                      return (
+                        <td key={column} className="p-3">
+                          {column === "Receipt" && receipt ? (
+                            <a
+                              href={receipt}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[#f30100] underline"
+                            >
+                              Open receipt
+                            </a>
+                          ) : (
+                            cellValue(expense, column)
+                          )}
+                        </td>
+                      );
+                    })}
+
+                    <td className="p-3">
+                      <ExpenseActions
+                        id={expense.id}
+                        onView={() => setModal({ mode: "view", expense })}
+                        onEdit={() => setModal({ mode: "edit", expense })}
+                      />
+                    </td>
+                  </tr>
+                ))}
+
+              {!loading && !loadError && filtered.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={shownColumns.length + 1}
+                    className="p-6 text-center text-muted-foreground"
+                  >
+                    {search ? "No matching expenses." : "No expenses found."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <label className="flex items-center gap-2 text-sm">
+          Show
           <select
             value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setCurrentPage(1);
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(1);
             }}
-            className="px-2 py-1 text-sm border border-border rounded bg-card"
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
+            className={buttonClass}
           >
             <option value={10}>10</option>
             <option value={25}>25</option>
             <option value={50}>50</option>
           </select>
-          <span className="text-sm text-muted-foreground" style={{ fontFamily: 'Poppins' }}>
-            entries per page
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button 
-            onClick={() => setCurrentPage(1)}
-            disabled={currentPage === 1}
-            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50" 
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
-          >
-            First
-          </button>
-          <button 
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50" 
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
+          entries per page
+        </label>
+
+        <div className="flex items-center gap-3 text-sm">
+          <button
+            type="button"
+            disabled={activePage === 1}
+            onClick={() => setPage(activePage - 1)}
+            className={buttonClass}
           >
             Previous
           </button>
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            const pageNum = i + 1;
-            return (
-              <button
-                key={pageNum}
-                onClick={() => setCurrentPage(pageNum)}
-                className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted"
-                style={{ 
-                  fontFamily: 'Poppins', 
-                  borderRadius: '6px', 
-                  borderColor: '#e3e3e3',
-                  backgroundColor: currentPage === pageNum ? '#f30100' : 'white',
-                  color: currentPage === pageNum ? 'white' : 'inherit'
-                }}
-              >
-                {pageNum}
-              </button>
-            );
-          })}
-          <button 
-            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50" 
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
+
+          <span>
+            Page {activePage} of {totalPages}
+          </span>
+
+          <button
+            type="button"
+            disabled={activePage === totalPages}
+            onClick={() => setPage(activePage + 1)}
+            className={buttonClass}
           >
             Next
           </button>
-          <button 
-            onClick={() => setCurrentPage(totalPages)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50" 
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
-          >
-            Last
-          </button>
         </div>
       </div>
-    </div>
-  );
-};
 
-export default Expense;
+      {response?.meta && (
+        <p className="text-sm text-muted-foreground">
+          Showing {expenses.length} loaded records out of{" "}
+          {response.meta.totalItems} total.
+        </p>
+      )}
+
+      {modal && (
+        <ExpenseModal
+          mode={modal.mode}
+          expense={modal.expense}
+          expenses={expenses}
+          onClose={() => setModal(null)}
+        />
+      )}
+    </main>
+  );
+}

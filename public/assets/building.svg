@@ -1,0 +1,18 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Linear / Building, Infrastructure / Buildings">
+<g clip-path="url(#clip0_0_90)">
+<path id="Vector" d="M12.8333 12.8333L1.16667 12.8333" stroke-linecap="round" stroke="#727272"/>
+<path id="Vector_2" d="M12.25 12.8333V3.5C12.25 2.40006 12.25 1.85008 11.9083 1.50838C11.5666 1.16667 11.0166 1.16667 9.91667 1.16667H8.75C7.65006 1.16667 7.10008 1.16667 6.75838 1.50838C6.48331 1.78344 6.42966 2.19346 6.4192 2.91667" stroke="#727272"/>
+<path id="Vector_3" d="M8.75 12.8333V5.25C8.75 4.15006 8.75 3.60008 8.40829 3.25838C8.06658 2.91667 7.51661 2.91667 6.41667 2.91667H4.08333C2.98339 2.91667 2.43342 2.91667 2.09171 3.25838C1.75 3.60008 1.75 4.15006 1.75 5.25V12.8333" stroke="#727272"/>
+<path id="Vector_4" d="M5.25 12.8333V11.0833" stroke-linecap="round" stroke="#727272"/>
+<path id="Vector_5" d="M3.5 4.66667H7" stroke-linecap="round" stroke="#727272"/>
+<path id="Vector_6" d="M3.5 6.41667H7" stroke-linecap="round" stroke="#727272"/>
+<path id="Vector_7" d="M3.5 8.16667H7" stroke-linecap="round" stroke="#727272"/>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_0_90">
+<rect width="14" height="14" rx="3" fill="white"/>
+</clipPath>
+</defs>
+</svg>

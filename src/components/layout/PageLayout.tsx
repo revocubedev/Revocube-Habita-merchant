@@ -18,14 +18,14 @@ const PageLayout = ({ theme, toggleTheme }: PageLayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen flex bg-background text-foreground">
+    <div className="h-screen overflow-hidden flex bg-background text-foreground">
       <Sidebar
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         onLogout={handleLogout}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         <Header
           theme={theme}
           toggleTheme={toggleTheme}

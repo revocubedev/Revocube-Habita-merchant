@@ -1,8 +1,9 @@
-import { NavLink, useLocation } from 'react-router-dom';
-import { LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { NavLink, useLocation, useParams } from 'react-router-dom';
+import { LogOut, ChevronRight } from 'lucide-react';
 import { navItems, userProfile } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { estatePath } from '@/lib/estateRoutes';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -12,7 +13,42 @@ interface SidebarProps {
 
 const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
   const location = useLocation();
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['management', 'real estate', 'finance']));
+  const { estateCode = '' } = useParams();
+
+  const isItemActive = (item: any, currentPath: string): boolean => {
+    if (estatePath(estateCode, item.to) === currentPath) return true;
+    if (item.children) {
+      return item.children.some((child: any) => estatePath(estateCode, child.to) === currentPath);
+    }
+    return false;
+  };
+
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
+    const initial = new Set(['management', 'real estate', 'finance']);
+    navItems.forEach((item) => {
+      if (item.children && isItemActive(item, location.pathname)) {
+        initial.add(item.label.toLowerCase());
+      }
+    });
+    return initial;
+  });
+
+  // Auto-expand parent item if one of its children is currently active on route change
+  useEffect(() => {
+    navItems.forEach((item) => {
+      if (item.children && isItemActive(item, location.pathname)) {
+        const key = item.label.toLowerCase();
+        setExpandedItems((prev) => {
+          if (!prev.has(key)) {
+            const next = new Set(prev);
+            next.add(key);
+            return next;
+          }
+          return prev;
+        });
+      }
+    });
+  }, [location.pathname, estateCode]);
 
   const toggleExpanded = (label: string) => {
     setExpandedItems((prev) => {
@@ -26,14 +62,6 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
     });
   };
 
-  const isItemActive = (item: any, currentPath: string): boolean => {
-    if (item.to === currentPath) return true;
-    if (item.children) {
-      return item.children.some((child: any) => child.to === currentPath);
-    }
-    return false;
-  };
-
   const renderNavItem = (item: any, depth = 0) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.has(item.label.toLowerCase());
@@ -43,7 +71,9 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
       return (
         <div key={item.to || item.label}>
           <button
+            type="button"
             onClick={() => toggleExpanded(item.label.toLowerCase())}
+            aria-expanded={isExpanded}
             className={cn(
               'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors',
               isActive
@@ -54,11 +84,12 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
           >
             <item.icon className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1 text-left">{item.label}</span>
-            {isExpanded ? (
-              <ChevronLeft className="w-4 h-4 flex-shrink-0" />
-            ) : (
-              <ChevronRight className="w-4 h-4 flex-shrink-0" />
-            )}
+            <ChevronRight
+              className={cn(
+                'w-4 h-4 flex-shrink-0 transition-transform duration-200',
+                isExpanded && 'rotate-90'
+              )}
+            />
           </button>
           {isExpanded && (
             <div className="space-y-1 mt-1">
@@ -72,7 +103,7 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
     return (
       <NavLink
         key={item.to}
-        to={item.to}
+        to={estatePath(estateCode, item.to)}
         end={item.end}
         onClick={() => onToggle()}
         className={({ isActive: linkIsActive }) =>
@@ -96,7 +127,7 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
       {/* Mobile backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
           onClick={onToggle}
         />
       )}
@@ -104,11 +135,10 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed lg:static z-50 inset-y-0 left-0 bg-card border-r border-border flex-col transition-transform duration-300',
-          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          'fixed md:static z-50 inset-y-0 left-0 h-screen shrink-0 w-[276px] md:w-[220px] lg:w-[276px] bg-card border-r border-border flex-col transition-transform duration-300',
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
           'flex'
         )}
-        style={{ width: '276px' }}
       >
         {/* Logo */}
         <div className="px-5 py-5 flex items-center gap-2.5 border-b border-border">
@@ -128,7 +158,7 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
           {navItems.map((item) => renderNavItem(item))}
         </nav>
 

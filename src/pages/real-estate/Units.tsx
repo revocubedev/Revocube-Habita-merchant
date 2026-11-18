@@ -1,24 +1,40 @@
+
 import { useState, useEffect } from 'react';
-import { Search, MoreHorizontal, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2 } from 'lucide-react';
+import { Search, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2 } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import { CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import { mockUnits } from '@/lib/mockData';
+import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
+import { useGetUnits, useDeleteUnit, Unit } from '@/api/api_controllers/unitController';
+import UnitFormModal from '@/components/units/UnitFormModal';
+
+const fmt = (v: string | number) => `₦${Number(v || 0).toLocaleString()}`;
+
+const DeleteUnitAction = ({ id, onClose }: { id: string; onClose: () => void }) => {
+  const { deleteUnit, isLoading } = useDeleteUnit(id);
+  return (
+    <RowAction danger disabled={isLoading} onClick={async () => {
+      if (!window.confirm('Delete this unit?')) return;
+      try { await deleteUnit(); } finally { onClose(); }
+    }}>
+      <Trash2 className="w-4 h-4" />
+      {isLoading ? 'Deleting...' : 'Delete'}
+    </RowAction>
+  );
+};
 
 const Units = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showRowMenu, setShowRowMenu] = useState<string | null>(null);
   const [visibleColumns, setVisibleColumns] = useState(['Unit', 'Rent Type', 'Rent', 'Rent Duration']);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const filteredUnits = mockUnits.filter((unit) =>
-    unit.unit.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    unit.property.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    unit.member.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Unit | null>(null);
+  const { list, isLoading, isError } = useGetUnits({ page: currentPage, perPage: pageSize, search: searchQuery });
+  const currentUnits = list?.items ?? [];
 
   const columns = [
     { id: 'Unit', label: 'Unit' },
@@ -26,22 +42,17 @@ const Units = () => {
     { id: 'Rent', label: 'Rent' },
     { id: 'Rent Duration', label: 'Rent Duration' },
     { id: 'Property', label: 'Property' },
-    { id: 'Member', label: 'Member' },
     { id: 'Actions', label: 'Actions' },
   ];
 
-  const totalPages = Math.ceil(filteredUnits.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const currentUnits = filteredUnits.slice(startIndex, endIndex);
+  const totalPages = Math.max(1, list?.meta?.totalPages ?? 1);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.column-menu-container') && !target.closest('.export-menu-container') && !target.closest('.row-menu-container')) {
+      if (!target.closest('.column-menu-container') && !target.closest('.export-menu-container')) {
         setShowColumnMenu(false);
         setShowExportMenu(false);
-        setShowRowMenu(null);
       }
     };
 
@@ -64,6 +75,7 @@ const Units = () => {
           Unit List
         </h2>
         <button
+          onClick={() => { setEditing(null); setFormOpen(true); }}
           className="text-sm text-white transition-colors flex items-center gap-2 px-4 py-2"
           style={{ 
             fontFamily: 'Poppins', 
@@ -175,45 +187,42 @@ const Units = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentUnits.map((unit) => (
+              {(isLoading || isError || currentUnits.length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="text-center py-10 text-muted-foreground">
+                    {isLoading ? 'Loading units...' : isError ? "Couldn't load units." : 'No units found.'}
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isLoading && currentUnits.map((unit) => (
                 <TableRow key={unit.id}>
                   {visibleColumns.includes('Unit') && (
-                    <TableCell className="font-medium">{unit.unit}</TableCell>
+                    <TableCell className="font-medium">{unit.name}</TableCell>
                   )}
                   {visibleColumns.includes('Rent Type') && (
                     <TableCell className="text-muted-foreground">{unit.rentType}</TableCell>
                   )}
                   {visibleColumns.includes('Rent') && (
-                    <TableCell className="text-muted-foreground">{unit.rent}</TableCell>
+                    <TableCell className="text-muted-foreground">{fmt(unit.rentAmount)}</TableCell>
                   )}
                   {visibleColumns.includes('Rent Duration') && (
                     <TableCell className="text-muted-foreground">{unit.rentDuration}</TableCell>
                   )}
                   {visibleColumns.includes('Property') && (
-                    <TableCell className="text-muted-foreground">{unit.property}</TableCell>
+                    <TableCell className="text-muted-foreground">{unit.property?.name ?? '—'}</TableCell>
                   )}
-                  {visibleColumns.includes('Member') && (
-                    <TableCell className="text-muted-foreground">{unit.member}</TableCell>
-                  )}
-                  <TableCell className="text-right relative row-menu-container">
-                    <button
-                      onClick={() => setShowRowMenu(showRowMenu === unit.id ? null : unit.id)}
-                      className="p-1 hover:bg-muted rounded"
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                    {showRowMenu === unit.id && (
-                      <div className="absolute right-0 top-full mt-1 w-32 bg-card border border-border rounded-lg shadow-lg p-1 z-10" style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}>
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2">
-                          <Edit className="w-4 h-4" />
-                          Edit
-                        </button>
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2 text-brand-text" style={{ color: '#f30100' }}>
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </button>
-                      </div>
-                    )}
+                  <TableCell className="text-left">
+                    <RowActionsMenu>
+                      {(close) => (
+                        <>
+                          <RowAction onClick={() => { close(); setEditing(unit); setFormOpen(true); }}>
+                            <Edit className="w-4 h-4" />
+                            Edit
+                          </RowAction>
+                          <DeleteUnitAction id={unit.id} onClose={close} />
+                        </>
+                      )}
+                    </RowActionsMenu>
                   </TableCell>
                 </TableRow>
               ))}
@@ -299,6 +308,8 @@ const Units = () => {
           </button>
         </div>
       </div>
+
+      <UnitFormModal isOpen={formOpen} onClose={() => setFormOpen(false)} unit={editing} />
     </div>
   );
 };
