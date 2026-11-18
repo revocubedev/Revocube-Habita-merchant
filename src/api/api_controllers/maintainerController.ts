@@ -1,7 +1,7 @@
 import useGetApiManager from "../useGetApiManager";
 import useApiManager from "../useApiManager";
 
-export type MaintainerType = "PLUMBER" | "ELECTRICITY" | "CLEANING" | "OTHER";
+// export type MaintainerType = "PLUMBER" | "ELECTRICITY" | "CLEANING" | "OTHER";
 
 export interface Maintainer {
   id: string;
@@ -9,7 +9,11 @@ export interface Maintainer {
   lastName: string;
   email: string;
   phoneNumber: string;
-  maintainerType: MaintainerType;
+  maintainerTypeId: string;
+  maintainerTypeNew?: {
+    id: string;
+    value: string;
+  };
   profileImage: string | null;
   createdAt: string;
   updatedAt: string;
@@ -21,7 +25,7 @@ export interface MaintainerFormValues {
   email: string;
   phoneNumber: string;
   password?: string;
-  maintainerType: MaintainerType;
+  maintainerTypeId: string;
   profileImage?: File | null;
 }
 

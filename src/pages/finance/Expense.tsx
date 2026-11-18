@@ -6,8 +6,8 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import RowActionsMenu from "@/components/ui/RowActionsMenu";
-import { RowAction } from "@/components/ui/RowActionsMenu";
+// import RowActionsMenu from "@/components/ui/RowActionsMenu";
+// import { RowAction } from "@/components/ui/RowActionsMenu";
 import { ChevronDown, FileSpreadsheet } from "lucide-react";
 import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
 // TODO: adjust these three paths to match your project.
@@ -144,12 +144,12 @@ function displayDate(value?: string): string {
         year: "numeric",
       });
 }
-function formatAmount(raw: string): string {
-  if (!raw) return "";
-  const [int, dec] = raw.split(".");
-  const withCommas = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return dec !== undefined ? `${withCommas}.${dec}` : withCommas;
-}
+// function formatAmount(raw: string): string {
+//   if (!raw) return "";
+//   const [int, dec] = raw.split(".");
+//   const withCommas = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+//   return dec !== undefined ? `${withCommas}.${dec}` : withCommas;
+// }
 
 function cleanAmount(input: string): string {
   const cleaned = input.replace(/[^\d.]/g, "");

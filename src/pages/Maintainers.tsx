@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, FileSpreadsheet, ChevronDown, Edit, Trash2 } from 'lucide-react';
+import { Search, FileSpreadsheet, ChevronDown, Edit, Trash2, Eye } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import { CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
@@ -10,6 +10,8 @@ import {
   type Maintainer,
 } from '@/api/api_controllers/maintainerController';
 import MaintainerFormModal from '@/components/maintainers/MaintainerFormModal';
+import DeleteModal from '@/components/ui/DeleteModal';
+import MaintainerViewModal from '@/components/portal/Maintainer';
 
 const formatDate = (v?: string) => {
   if (!v) return '';
@@ -17,21 +19,27 @@ const formatDate = (v?: string) => {
   return isNaN(d.getTime()) ? v : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-const DeleteMaintainerButton = ({ id, onClose }: { id: string; onClose: () => void }) => {
-  const { deleteMaintainer, isLoading } = useDeleteMaintainer(id);
+const DeleteMaintainerButton = ({ id, name }: { id: string; name: string }) => {
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
   return (
-    <RowAction
-      danger
-      disabled={isLoading}
-      onClick={async () => {
-        if (!window.confirm('Delete this maintainer?')) return;
-        onClose();
-        try { await deleteMaintainer(); } catch { /* toast shown */ }
-      }}
-    >
-      <Trash2 className="w-4 h-4" />
-      {isLoading ? 'Deleting...' : 'Delete'}
-    </RowAction>
+    <>
+      <RowAction danger onClick={() => setIsDeleteOpen(true)}>
+        <Trash2 className="w-4 h-4" />
+        Delete
+      </RowAction>
+
+      <DeleteModal
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        endpoint={`maintainers/${id}`}
+        queryKey={["get_maintainers"]}
+        itemName={name}
+        entity="Maintainer"
+        successMessage="Maintainer deleted successfully"
+        isCode
+      />
+    </>
   );
 };
 
@@ -41,6 +49,7 @@ const Maintainers = () => {
   const [visibleColumns, setVisibleColumns] = useState(['Maintainer', 'Email Address', 'User', 'Creation Date', 'Type', 'Actions']);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [viewing, setViewing] = useState<Maintainer | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Maintainer | null>(null);
@@ -83,17 +92,23 @@ const Maintainers = () => {
     <div className="space-y-4">
       {/* Section Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-[16px] font-display font-medium text-foreground" style={{ fontFamily: 'Poppins', fontWeight: 500, color: '#4c4c4c' }}>
+        <h2
+          className="text-[16px] font-display font-medium text-foreground"
+          style={{ fontFamily: "Poppins", fontWeight: 500, color: "#4c4c4c" }}
+        >
           Maintainers List
         </h2>
         <button
-          onClick={() => { setEditing(null); setModalOpen(true); }}
+          onClick={() => {
+            setEditing(null);
+            setModalOpen(true);
+          }}
           className="text-sm text-white transition-colors flex items-center gap-2 px-4 py-2"
-          style={{ 
-            fontFamily: 'Poppins', 
-            borderRadius: '8px', 
-            backgroundColor: '#f30100',
-            border: 'none'
+          style={{
+            fontFamily: "Poppins",
+            borderRadius: "8px",
+            backgroundColor: "#f30100",
+            border: "none",
           }}
         >
           + Create Maintainer
@@ -107,7 +122,7 @@ const Maintainers = () => {
           <input
             placeholder="Search by name..."
             className="w-full pl-9 pr-3 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-brand-text/20 transition-colors"
-            style={{ fontFamily: 'Poppins', borderColor: '#e3e3e3' }}
+            style={{ fontFamily: "Poppins", borderColor: "#e3e3e3" }}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -118,16 +133,27 @@ const Maintainers = () => {
           <button
             onClick={() => setShowColumnMenu(!showColumnMenu)}
             className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-card hover:bg-muted transition-colors"
-            style={{ fontFamily: 'Poppins', borderRadius: '8px', borderColor: '#e3e3e3' }}
+            style={{
+              fontFamily: "Poppins",
+              borderRadius: "8px",
+              borderColor: "#e3e3e3",
+            }}
           >
             <FileSpreadsheet className="w-4 h-4" />
             Column Visibility
             <ChevronDown className="w-4 h-4" />
           </button>
           {showColumnMenu && (
-            <div className="absolute top-full left-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-lg p-2 z-10" style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}>
+            <div
+              className="absolute top-full left-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-lg p-2 z-10"
+              style={{ borderColor: "#e3e3e3", borderRadius: "8px" }}
+            >
               {columns.map((col) => (
-                <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-muted rounded" style={{ fontFamily: 'Poppins' }}>
+                <label
+                  key={col.id}
+                  className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-muted rounded"
+                  style={{ fontFamily: "Poppins" }}
+                >
                   <input
                     type="checkbox"
                     checked={visibleColumns.includes(col.id)}
@@ -135,11 +161,13 @@ const Maintainers = () => {
                       if (e.target.checked) {
                         setVisibleColumns([...visibleColumns, col.id]);
                       } else {
-                        setVisibleColumns(visibleColumns.filter((c) => c !== col.id));
+                        setVisibleColumns(
+                          visibleColumns.filter((c) => c !== col.id)
+                        );
                       }
                     }}
                     className="rounded border-gray-300"
-                    style={{ accentColor: '#f30100' }}
+                    style={{ accentColor: "#f30100" }}
                   />
                   {col.label}
                 </label>
@@ -150,74 +178,111 @@ const Maintainers = () => {
       </div>
 
       {/* Data Table */}
-      <Card 
+      <Card
         className="bg-card border border-border"
-        style={{ 
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        style={{
+          borderRadius: "12px",
+          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
         }}
       >
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                {columns.filter(col => visibleColumns.includes(col.id)).map((col) => (
-                  <TableHead key={col.id} className="text-sm font-medium">
-                    {col.label}
-                  </TableHead>
-                ))}
+                {columns
+                  .filter((col) => visibleColumns.includes(col.id))
+                  .map((col) => (
+                    <TableHead key={col.id} className="text-sm font-medium">
+                      {col.label}
+                    </TableHead>
+                  ))}
               </TableRow>
             </TableHeader>
             <TableBody>
               {(isLoading || isError || currentMaintainers.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={visibleColumns.length} className="text-center text-muted-foreground py-8">
-                    {isLoading ? 'Loading maintainers...' : isError ? (error as Error)?.message : 'No maintainers found'}
+                  <TableCell
+                    colSpan={visibleColumns.length}
+                    className="text-center text-muted-foreground py-8"
+                  >
+                    {isLoading
+                      ? "Loading maintainers..."
+                      : isError
+                      ? (error as Error)?.message
+                      : "No maintainers found"}
                   </TableCell>
                 </TableRow>
               )}
-              {!isLoading && currentMaintainers.map((maintainer) => (
-                <TableRow key={maintainer.id}>
-                  {visibleColumns.includes('Maintainer') && (
-                    <TableCell className="font-medium">
-                      {maintainer.firstName} {maintainer.lastName}
-                    </TableCell>
-                  )}
-                  {visibleColumns.includes('Email Address') && (
-                    <TableCell className="text-muted-foreground">{maintainer.email}</TableCell>
-                  )}
-                  {visibleColumns.includes('User') && (
-                    <TableCell className="text-muted-foreground">{maintainer.phoneNumber}</TableCell>
-                  )}
-                  {visibleColumns.includes('Creation Date') && (
-                    <TableCell className="text-muted-foreground">{formatDate(maintainer.createdAt)}</TableCell>
-                  )}
-                  {visibleColumns.includes('Type') && (
-                    <TableCell className="text-muted-foreground">{maintainer.maintainerType}</TableCell>
-                  )}
-                  {visibleColumns.includes('Actions') && (
-                    <TableCell className="text-right">
-                      <RowActionsMenu label={`Actions for ${maintainer.firstName} ${maintainer.lastName}`}>
-                        {(close) => (
-                          <>
-                            <RowAction
-                              onClick={() => {
-                                setEditing(maintainer);
-                                setModalOpen(true);
-                                close();
-                              }}
-                            >
-                              <Edit className="w-4 h-4" />
-                              Edit
-                            </RowAction>
-                            <DeleteMaintainerButton id={maintainer.id} onClose={close} />
-                          </>
-                        )}
-                      </RowActionsMenu>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
+              {!isLoading &&
+                currentMaintainers.map((maintainer) => (
+                  <TableRow key={maintainer.id}>
+                    {visibleColumns.includes("Maintainer") && (
+                      <TableCell className="font-medium">
+                        {maintainer.firstName} {maintainer.lastName}
+                      </TableCell>
+                    )}
+                    {visibleColumns.includes("Email Address") && (
+                      <TableCell className="text-muted-foreground">
+                        {maintainer.email}
+                      </TableCell>
+                    )}
+                    {visibleColumns.includes("User") && (
+                      <TableCell className="text-muted-foreground">
+                        {maintainer.phoneNumber}
+                      </TableCell>
+                    )}
+                    {visibleColumns.includes("Creation Date") && (
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(maintainer.createdAt)}
+                      </TableCell>
+                    )}
+                    {visibleColumns.includes("Type") && (
+                      <TableCell className="text-muted-foreground">
+                        {maintainer.maintainerTypeNew?.value}
+                      </TableCell>
+                    )}
+                    {visibleColumns.includes("Actions") && (
+                      <TableCell className="text-left">
+                        <RowActionsMenu
+                          label={`Actions for ${maintainer.firstName} ${maintainer.lastName}`}
+                        >
+                          {(close) => (
+                            <>
+                              {/* View */}
+                              <RowAction
+                                onClick={() => {
+                                  setViewing(maintainer);
+                                  close();
+                                }}
+                              >
+                                <Eye className="w-4 h-4" />
+                                View Details
+                              </RowAction>
+
+                              {/* Edit */}
+                              <RowAction
+                                onClick={() => {
+                                  setEditing(maintainer);
+                                  setModalOpen(true);
+                                  close();
+                                }}
+                              >
+                                <Edit className="w-4 h-4" />
+                                Edit
+                              </RowAction>
+
+                              {/* Delete */}
+                              <DeleteMaintainerButton
+                                id={maintainer.id}
+                                name={`${maintainer.firstName} ${maintainer.lastName}`}
+                              />
+                            </>
+                          )}
+                        </RowActionsMenu>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </CardContent>
@@ -226,7 +291,10 @@ const Maintainers = () => {
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground" style={{ fontFamily: 'Poppins' }}>
+          <span
+            className="text-sm text-muted-foreground"
+            style={{ fontFamily: "Poppins" }}
+          >
             Show
           </span>
           <select
@@ -236,31 +304,46 @@ const Maintainers = () => {
               setCurrentPage(1);
             }}
             className="px-2 py-1 text-sm border border-border rounded bg-card"
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
+            style={{
+              fontFamily: "Poppins",
+              borderRadius: "6px",
+              borderColor: "#e3e3e3",
+            }}
           >
             <option value={10}>10</option>
             <option value={15}>15</option>
             <option value={25}>25</option>
             <option value={50}>50</option>
           </select>
-          <span className="text-sm text-muted-foreground" style={{ fontFamily: 'Poppins' }}>
+          <span
+            className="text-sm text-muted-foreground"
+            style={{ fontFamily: "Poppins" }}
+          >
             entries per page
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <button 
+          <button
             onClick={() => setCurrentPage(1)}
             disabled={currentPage === 1}
-            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50" 
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
+            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50"
+            style={{
+              fontFamily: "Poppins",
+              borderRadius: "6px",
+              borderColor: "#e3e3e3",
+            }}
           >
             First
           </button>
-          <button 
+          <button
             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
-            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50" 
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
+            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50"
+            style={{
+              fontFamily: "Poppins",
+              borderRadius: "6px",
+              borderColor: "#e3e3e3",
+            }}
           >
             Previous
           </button>
@@ -271,38 +354,59 @@ const Maintainers = () => {
                 key={pageNum}
                 onClick={() => setCurrentPage(pageNum)}
                 className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted"
-                style={{ 
-                  fontFamily: 'Poppins', 
-                  borderRadius: '6px', 
-                  borderColor: '#e3e3e3',
-                  backgroundColor: currentPage === pageNum ? '#f30100' : 'white',
-                  color: currentPage === pageNum ? 'white' : 'inherit'
+                style={{
+                  fontFamily: "Poppins",
+                  borderRadius: "6px",
+                  borderColor: "#e3e3e3",
+                  backgroundColor:
+                    currentPage === pageNum ? "#f30100" : "white",
+                  color: currentPage === pageNum ? "white" : "inherit",
                 }}
               >
                 {pageNum}
               </button>
             );
           })}
-          <button 
-            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+          <button
+            onClick={() =>
+              setCurrentPage(Math.min(totalPages, currentPage + 1))
+            }
             disabled={currentPage === totalPages}
-            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50" 
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
+            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50"
+            style={{
+              fontFamily: "Poppins",
+              borderRadius: "6px",
+              borderColor: "#e3e3e3",
+            }}
           >
             Next
           </button>
-          <button 
+          <button
             onClick={() => setCurrentPage(totalPages)}
             disabled={currentPage === totalPages}
-            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50" 
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
+            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50"
+            style={{
+              fontFamily: "Poppins",
+              borderRadius: "6px",
+              borderColor: "#e3e3e3",
+            }}
           >
             Last
           </button>
         </div>
       </div>
 
-      <MaintainerFormModal isOpen={modalOpen} onClose={() => setModalOpen(false)} maintainer={editing} />
+      <MaintainerFormModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        maintainer={editing}
+      />
+
+      <MaintainerViewModal
+        isOpen={!!viewing}
+        onClose={() => setViewing(null)}
+        maintainer={viewing}
+      />
     </div>
   );
 };

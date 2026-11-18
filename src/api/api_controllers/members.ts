@@ -20,13 +20,6 @@ export interface Member {
   id: string;
   name: string;
   phoneNumber: string;
-  streetAddress: string | null;
-
-  // A member can have multiple properties and units
-  properties: MemberProperty[];
-  units: MemberUnit[];
-
-  // Optional fields for other API responses or existing UI usage
   firstName?: string;
   lastName?: string;
   email?: string;
