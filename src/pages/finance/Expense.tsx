@@ -6,15 +6,13 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-// import RowActionsMenu from "@/components/ui/RowActionsMenu";
-// import { RowAction } from "@/components/ui/RowActionsMenu";
-import { ChevronDown, FileSpreadsheet } from "lucide-react";
+import { ChevronDown, Plus, Search } from "lucide-react";
+import * as XLSX from "xlsx";
 import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
-// TODO: adjust these three paths to match your project.
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
-import * as XLSX from "xlsx";
+import { useGetExpenseTypes, extractTypes } from "@/api/api_controllers/types";
 import {
   useCreateExpense,
   useUpdateExpense,
@@ -33,8 +31,8 @@ type ExpenseForm = {
   date: string;
   notes: string;
   receipt: File | null;
-  property: string;
-  unit: string;
+  propertyId: string;
+  unitId: string;
 };
 
 const emptyForm = (): ExpenseForm => ({
@@ -44,19 +42,9 @@ const emptyForm = (): ExpenseForm => ({
   date: "",
   notes: "",
   receipt: null,
-  property: "",
-  unit: "",
+  propertyId: "",
+  unitId: "",
 });
-
-const ISSUE_TYPES = [
-  "security",
-  "diesel",
-  "power",
-  "water",
-  "cleaning",
-  "repair",
-  "other",
-];
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm disabled:opacity-60";
@@ -75,43 +63,32 @@ const columns = [
   "Receipt",
 ];
 
-/**
- * Formats an amount with thousand separators.
- *
- * Examples:
- * 1500       -> 1,500
- * 1500000    -> 1,500,000
- * 1500000.5  -> 1,500,000.5
- * 1500000.50 -> 1,500,000.50
- */
-function formatAmount(value: string): string {
-  const cleaned = value.replace(/[^\d.]/g, "");
-
-  const decimalIndex = cleaned.indexOf(".");
-  const hasDecimal = decimalIndex !== -1;
-
-  const integerPart = hasDecimal ? cleaned.slice(0, decimalIndex) : cleaned;
-
-  const decimalPart = hasDecimal
-    ? cleaned
-        .slice(decimalIndex + 1)
-        .replace(/\./g, "")
-        .slice(0, 2)
-    : "";
-
-  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-  return hasDecimal ? `${formattedInteger}.${decimalPart}` : formattedInteger;
+function cleanAmount(input: string): string {
+  const cleaned = input.replace(/[^\d.]/g, "");
+  const [int, ...rest] = cleaned.split(".");
+  return rest.length ? `${int}.${rest.join("").slice(0, 2)}` : int;
 }
 
-/**
- * Removes commas before sending the amount to the API.
- */
+function formatAmount(value: string): string {
+  const cleaned = cleanAmount(value);
+  if (!cleaned) return "";
+
+  const decimalIndex = cleaned.indexOf(".");
+
+  if (decimalIndex === -1) {
+    return cleaned.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+
+  const integerPart = cleaned.slice(0, decimalIndex);
+  const decimalPart = cleaned.slice(decimalIndex + 1);
+
+  return `${integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${decimalPart}`;
+}
+
 function parseAmount(value: string): number {
   return Number(value.replace(/,/g, ""));
 }
 
-// The API may return property/unit as a string or as { id, name }
 function labelOf(value: unknown): string {
   if (typeof value === "string") return value;
 
@@ -123,11 +100,58 @@ function labelOf(value: unknown): string {
   return "";
 }
 
+function idOf(direct: unknown, nested: unknown): string {
+  if (typeof direct === "string" && direct) return direct;
+
+  if (nested && typeof nested === "object" && "id" in nested) {
+    return String((nested as { id: unknown }).id ?? "");
+  }
+
+  return "";
+}
+
+type NamedOption = { id: string; name: string };
+
+function uniqueOptions(items: NamedOption[]): NamedOption[] {
+  const seen = new Map<string, NamedOption>();
+
+  for (const item of items) {
+    if (item.id && !seen.has(item.id)) seen.set(item.id, item);
+  }
+
+  return [...seen.values()];
+}
+
+function typeLabel(
+  expense: ApiExpense,
+  options: { id: string; value: string }[]
+): string {
+  const direct = expense.issueType ?? expense.type;
+
+  const raw =
+    typeof direct === "string"
+      ? direct
+      : direct && typeof direct === "object"
+        ? String(direct.value ?? direct.name ?? "")
+        : "";
+
+  if (raw) return raw;
+
+  return options.find((o) => o.id === expense.issueTypeId)?.value ?? "";
+}
+
+function receiptOf(expense: ApiExpense): string | null | undefined {
+  return expense.receiptUrl ?? expense.receipt;
+}
+
 function currency(value: number | string): string {
   const amount = Number(value);
 
   return Number.isFinite(amount)
-    ? `₦${amount.toLocaleString("en-NG")}`
+    ? `₦${amount.toLocaleString("en-NG", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`
     : String(value);
 }
 
@@ -144,18 +168,7 @@ function displayDate(value?: string): string {
         year: "numeric",
       });
 }
-// function formatAmount(raw: string): string {
-//   if (!raw) return "";
-//   const [int, dec] = raw.split(".");
-//   const withCommas = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-//   return dec !== undefined ? `${withCommas}.${dec}` : withCommas;
-// }
 
-function cleanAmount(input: string): string {
-  const cleaned = input.replace(/[^\d.]/g, "");
-  const [int, ...rest] = cleaned.split(".");
-  return rest.length ? `${int}.${rest.join("").slice(0, 2)}` : int;
-}
 function inputDate(value?: string): string {
   if (!value) return "";
 
@@ -194,10 +207,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/*
- * Each row owns its delete hook so the ID is available
- * before the user clicks Delete.
- */
 function ExpenseActions({
   id,
   onView,
@@ -238,7 +247,6 @@ function ExpenseActions({
     try {
       await deleteExpense();
       setIsOpen(false);
-      // The controller invalidates get_expenses automatically.
     } catch (err) {
       setError(errorText(err));
     }
@@ -249,6 +257,7 @@ function ExpenseActions({
       <RowActionsMenu
         label={`Actions for expense ${id}`}
         panelWidth={186}
+        triggerClassName="h-6 w-6 rounded text-[#5f5f5f] hover:bg-transparent hover:text-[#393939]"
         triggerIcon={
           <img src="/assets/ellipsis.svg" alt="" width={24} height={24} />
         }
@@ -283,7 +292,7 @@ function ExpenseActions({
 
             <RowAction
               disabled={isLoading}
-              className="h-9 whitespace-nowrap rounded-[5px] bg-[#ffedee] px-4 text-[#ff383c] hover:bg-[#ffdde0]"
+              className="h-9 whitespace-nowrap rounded-[5px] px-4 text-[#ff383c] hover:bg-[#fff5f5]"
               onClick={() => {
                 close();
                 setError("");
@@ -409,16 +418,16 @@ function ExpenseModal({
     expense
       ? {
           title: expense.title,
-          issueType: (expense.issueType ?? expense.type ?? "").toLowerCase(),
+          issueType: typeLabel(expense, []),
           amount:
             expense.amount === undefined || expense.amount === null
               ? ""
-              : formatAmount(String(expense.amount)),
+              : cleanAmount(String(expense.amount)),
           date: inputDate(expense.date),
           notes: expense.notes ?? "",
           receipt: null,
-          property: labelOf(expense.property),
-          unit: labelOf(expense.unit),
+          propertyId: idOf(expense.propertyId, expense.property),
+          unitId: idOf(expense.unitId, expense.unit),
         }
       : emptyForm()
   );
@@ -429,6 +438,38 @@ function ExpenseModal({
   const update = useUpdateExpense(expense?.id);
 
   const busy = create.isLoading || update.isLoading;
+
+  const typesQuery = useGetExpenseTypes(!readOnly);
+  const issueTypes = extractTypes(typesQuery.data);
+
+  const selectedIssueType = form.issueType
+    ? issueTypes.find(
+        (t) =>
+          t.id === form.issueType ||
+          t.value.toUpperCase() === form.issueType.toUpperCase()
+      )?.id ?? form.issueType
+    : expense?.issueTypeId ??
+      (typeof expense?.issueType === "object" && expense.issueType
+        ? expense.issueType.id ?? ""
+        : "");
+
+  const allExpenses = expense ? [expense, ...expenses] : expenses;
+
+  const properties = uniqueOptions(
+    allExpenses.map((e) => ({
+      id: idOf(e.propertyId, e.property),
+      name: labelOf(e.property),
+    }))
+  );
+
+  const units = uniqueOptions(
+    allExpenses
+      .filter((e) => idOf(e.propertyId, e.property) === form.propertyId)
+      .map((e) => ({
+        id: idOf(e.unitId, e.unit),
+        name: labelOf(e.unit),
+      }))
+  );
 
   function change<K extends keyof ExpenseForm>(key: K, value: ExpenseForm[K]) {
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -441,22 +482,40 @@ function ExpenseModal({
 
     setError("");
 
-    // Remove thousand separators before converting to a number.
     const amount = parseAmount(form.amount);
+    const title = form.title.trim();
+    const notes = form.notes.trim();
+    const issueType = selectedIssueType.trim();
+
+    if (!title) {
+      setError("Please enter an expense title.");
+      return;
+    }
+
+    if (!notes) {
+      setError("Please enter expense notes.");
+      return;
+    }
+
+    if (!issueType) {
+      setError("Please select a valid expense type.");
+      return;
+    }
 
     if (!form.amount.trim() || !Number.isFinite(amount) || amount <= 0) {
-      setError("Amount must be greater than zero");
+      setError("Amount must be greater than zero.");
       return;
     }
 
     const payload: ExpenseInput = {
-      title: form.title.trim(),
-      issueType: form.issueType.trim().toUpperCase(),
+      title,
+      issueType,
       amount,
       date: form.date,
-      notes: form.notes,
+      notes,
       receipt: form.receipt ?? undefined,
-      ...(mode === "edit" ? { property: form.property, unit: form.unit } : {}),
+      ...(form.propertyId ? { propertyId: form.propertyId } : {}),
+      ...(form.unitId ? { unitId: form.unitId } : {}),
     };
 
     try {
@@ -472,31 +531,11 @@ function ExpenseModal({
     }
   };
 
-  const receipt = receiptLink(expense?.receipt);
+  const receipt = receiptLink(expense ? receiptOf(expense) : undefined);
 
   if (mode === "edit") {
     const controlClass =
       "h-12 border-[#eaeaea] bg-white px-5 text-base leading-[1.4] text-[#4c4c4c] placeholder:text-[#a1a1a1]";
-
-    const properties = [
-      ...new Set(
-        [
-          form.property,
-          ...expenses.map((item) => labelOf(item.property)),
-        ].filter(Boolean)
-      ),
-    ];
-
-    const units = [
-      ...new Set(
-        [
-          form.unit,
-          ...expenses
-            .filter((item) => labelOf(item.property) === form.property)
-            .map((item) => labelOf(item.unit)),
-        ].filter(Boolean)
-      ),
-    ];
 
     const expenseNumber = expense?.expenseNumber || `#EXP-${expense?.id ?? ""}`;
 
@@ -546,6 +585,12 @@ function ExpenseModal({
             </p>
           )}
 
+          {typesQuery.isError && (
+            <p role="alert" className="mb-4 text-sm text-red-600">
+              Unable to load expense types. Please try again.
+            </p>
+          )}
+
           <fieldset
             disabled={busy}
             className="space-y-5 [&_label>span]:mb-2 [&_label>span]:leading-5 [&_label>span]:text-[#4c4c4c]"
@@ -583,24 +628,25 @@ function ExpenseModal({
                 <div className="relative">
                   <select
                     required
-                    value={form.issueType}
+                    value={selectedIssueType}
+                    disabled={typesQuery.isLoading || typesQuery.isError}
                     onChange={(event) =>
                       change("issueType", event.target.value)
                     }
                     className={`w-full appearance-none rounded-lg border pr-12 ${controlClass}`}
                   >
                     <option value="" disabled>
-                      Select type
+                      {typesQuery.isLoading ? "Loading types..." : "Select type"}
                     </option>
 
                     {form.issueType &&
-                      !ISSUE_TYPES.includes(form.issueType) && (
+                      !issueTypes.some((t) => t.id === selectedIssueType) && (
                         <option value={form.issueType}>{form.issueType}</option>
                       )}
 
-                    {ISSUE_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                    {issueTypes.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.label}
                       </option>
                     ))}
                   </select>
@@ -614,18 +660,18 @@ function ExpenseModal({
               <Field label="Property">
                 <div className="relative">
                   <select
-                    value={form.property}
+                    value={form.propertyId}
                     onChange={(event) => {
-                      change("property", event.target.value);
-                      change("unit", "");
+                      change("propertyId", event.target.value);
+                      change("unitId", "");
                     }}
                     className={`w-full appearance-none rounded-lg border pr-12 ${controlClass}`}
                   >
                     <option value="">Select property</option>
 
                     {properties.map((property) => (
-                      <option key={property} value={property}>
-                        {property}
+                      <option key={property.id} value={property.id}>
+                        {property.name}
                       </option>
                     ))}
                   </select>
@@ -637,15 +683,15 @@ function ExpenseModal({
               <Field label="Unit">
                 <div className="relative">
                   <select
-                    value={form.unit}
-                    onChange={(event) => change("unit", event.target.value)}
+                    value={form.unitId}
+                    onChange={(event) => change("unitId", event.target.value)}
                     className={`w-full appearance-none rounded-lg border pr-12 ${controlClass}`}
                   >
                     <option value="">Select unit</option>
 
                     {units.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
+                      <option key={unit.id} value={unit.id}>
+                        {unit.name}
                       </option>
                     ))}
                   </select>
@@ -676,13 +722,12 @@ function ExpenseModal({
                   type="text"
                   inputMode="decimal"
                   placeholder="0.00"
-                  value={form.amount}
+                  value={formatAmount(form.amount)}
                   onChange={(event) =>
-                    change("amount", formatAmount(event.target.value))
+                    change("amount", cleanAmount(event.target.value))
                   }
                   className={controlClass}
                 />
-                <Input required type="text" inputMode="decimal" placeholder="0.00" value={formatAmount(form.amount)} onChange={(event) => change("amount", cleanAmount(event.target.value))} className={controlClass} />
               </Field>
             </div>
 
@@ -733,7 +778,7 @@ function ExpenseModal({
           <div className="mt-12 flex justify-end sm:mt-[179px]">
             <Button
               type="submit"
-              disabled={busy}
+              disabled={busy || typesQuery.isError || issueTypes.length === 0}
               className="h-11 min-w-[101px] bg-brand-text px-6 font-semibold text-white hover:bg-brand-text/90"
             >
               {busy ? "Updating..." : "Update"}
@@ -773,6 +818,12 @@ function ExpenseModal({
           </p>
         )}
 
+        {typesQuery.isError && !readOnly && (
+          <p role="alert" className="mb-4 text-sm text-red-600">
+            Unable to load expense types. Please try again.
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <fieldset disabled={readOnly || busy} className="space-y-4">
             <label className="block space-y-1">
@@ -791,21 +842,76 @@ function ExpenseModal({
 
               <select
                 required
-                value={form.issueType}
+                value={selectedIssueType}
+                disabled={
+                  typesQuery.isLoading ||
+                  typesQuery.isError ||
+                  issueTypes.length === 0
+                }
                 onChange={(event) => change("issueType", event.target.value)}
                 className={inputClass}
               >
                 <option value="" disabled>
-                  Select an issue type
+                  {typesQuery.isLoading
+                    ? "Loading types..."
+                    : typesQuery.isError
+                      ? "Unable to load types"
+                      : "Select an issue type"}
                 </option>
 
-                {ISSUE_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type.toUpperCase()}
+                {form.issueType &&
+                  !issueTypes.some((t) => t.id === selectedIssueType) && (
+                    <option value={form.issueType}>{form.issueType}</option>
+                  )}
+
+                {issueTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.label}
                   </option>
                 ))}
               </select>
             </label>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className="block space-y-1">
+                <span>Property</span>
+
+                <select
+                  value={form.propertyId}
+                  onChange={(event) => {
+                    change("propertyId", event.target.value);
+                    change("unitId", "");
+                  }}
+                  className={inputClass}
+                >
+                  <option value="">Select property</option>
+
+                  {properties.map((property) => (
+                    <option key={property.id} value={property.id}>
+                      {property.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block space-y-1">
+                <span>Unit</span>
+
+                <select
+                  value={form.unitId}
+                  onChange={(event) => change("unitId", event.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Select unit</option>
+
+                  {units.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block space-y-1">
@@ -816,9 +922,9 @@ function ExpenseModal({
                   type="text"
                   inputMode="decimal"
                   placeholder="0.00"
-                  value={form.amount}
+                  value={formatAmount(form.amount)}
                   onChange={(event) =>
-                    change("amount", formatAmount(event.target.value))
+                    change("amount", cleanAmount(event.target.value))
                   }
                   // value={formatAmount(form.amount)}
                   // onChange={(e) => change("amount", cleanAmount(e.target.value))}
@@ -890,7 +996,12 @@ function ExpenseModal({
 
               <button
                 type="submit"
-                disabled={busy}
+                disabled={
+                  busy ||
+                  typesQuery.isError ||
+                  typesQuery.isLoading ||
+                  issueTypes.length === 0
+                }
                 className="rounded-lg bg-[#f30100] px-4 py-2 text-sm text-white disabled:opacity-50"
               >
                 {busy ? "Saving..." : "Save Expense"}
@@ -907,10 +1018,14 @@ export default function Expense() {
   const code = localStorage.getItem("code") ?? "";
   const query = useGetExpensesCall();
 
+  const typesQuery = useGetExpenseTypes();
+  const typeOptions = extractTypes(typesQuery.data);
+
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showColumns, setShowColumns] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(columns);
 
   const [modal, setModal] = useState<{
@@ -920,12 +1035,15 @@ export default function Expense() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (!(event.target as HTMLElement).closest('.expense-column-menu-container')) {
+      if (
+        !(event.target as HTMLElement).closest(".expense-column-menu-container")
+      ) {
         setShowColumns(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const response = query.data;
@@ -933,8 +1051,8 @@ export default function Expense() {
   const loadError = !code.trim()
     ? "Estate code is missing. Select or sign in to your estate first."
     : query.error
-    ? errorText(query.error)
-    : "";
+      ? errorText(query.error)
+      : "";
 
   const expenses = !loadError ? response?.data ?? [] : [];
 
@@ -946,8 +1064,7 @@ export default function Expense() {
       expense.title,
       labelOf(expense.property),
       labelOf(expense.unit),
-      expense.issueType,
-      expense.type,
+      typeLabel(expense, typeOptions),
     ].some((value) =>
       String(value ?? "")
         .toLowerCase()
@@ -975,55 +1092,57 @@ export default function Expense() {
       case "Unit":
         return labelOf(expense.unit) || "—";
       case "Type":
-        return expense.issueType || expense.type || "—";
+        return typeLabel(expense, typeOptions) || "—";
       case "Date":
         return displayDate(expense.date);
       case "Amount":
         return currency(expense.amount);
       case "Receipt":
-        return expense.receipt ? "Attached" : "—";
+        return receiptOf(expense) ? "Attached" : "—";
       default:
         return "";
     }
   };
 
   const exportXlsx = () => {
-    // Same rules as before: filtered rows, visible columns only.
     const rows = filtered.map((expense) => {
       const row: Record<string, string | number> = {};
+
       for (const column of shownColumns) {
-        // Real number for Amount so Excel can sum it; text for everything else.
         row[column] =
           column === "Amount"
-            ? Number.isFinite(Number(expense.amount)) ? Number(expense.amount) : ""
+            ? Number.isFinite(Number(expense.amount))
+              ? Number(expense.amount)
+              : ""
             : cellValue(expense, column);
       }
+
       return row;
     });
 
     const sheet = XLSX.utils.json_to_sheet(rows, { header: shownColumns });
 
-   // Auto-size columns.
-sheet["!cols"] = shownColumns.map((column) => ({
-  wch:
-    Math.max(
-      column.length,
-      ...rows.map((row) => {
-        const value = row[column];
-        // Amount is displayed as ₦#,##0.00, so measure that, not the raw number.
-        if (column === "Amount" && typeof value === "number") {
-          return `₦${value.toLocaleString("en-NG", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`.length;
-        }
-        return String(value ?? "").length;
-      }),
-    ) + 4,
-}));
+    sheet["!cols"] = shownColumns.map((column) => ({
+      wch:
+        Math.max(
+          column.length,
+          ...rows.map((row) => {
+            const value = row[column];
 
-    // Show Amount as ₦ currency while keeping it numeric.
+            if (column === "Amount" && typeof value === "number") {
+              return `₦${value.toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`.length;
+            }
+
+            return String(value ?? "").length;
+          })
+        ) + 4,
+    }));
+
     const amountCol = shownColumns.indexOf("Amount");
+
     if (amountCol !== -1) {
       rows.forEach((_, i) => {
         const cell = sheet[XLSX.utils.encode_cell({ r: i + 1, c: amountCol })];
@@ -1036,23 +1155,188 @@ sheet["!cols"] = shownColumns.map((column) => ({
     XLSX.writeFile(workbook, "expenses.xlsx");
   };
 
+  const exportPdf = () => {
+    const printWindow = window.open("", "_blank");
+
+    if (!printWindow) {
+      alert("Please allow pop-ups to export the PDF.");
+      return;
+    }
+
+    const escapeHtml = (value: string) =>
+      value.replace(/[&<>"']/g, (char) => {
+        const entities: Record<string, string> = {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        };
+
+        return entities[char];
+      });
+
+    const tableHeaders = shownColumns
+      .map((column) => `<th>${escapeHtml(column)}</th>`)
+      .join("");
+
+    const tableRows = filtered
+      .map((expense) => {
+        const cells = shownColumns
+          .map(
+            (column) =>
+              `<td>${escapeHtml(cellValue(expense, column))}</td>`
+          )
+          .join("");
+
+        return `<tr>${cells}</tr>`;
+      })
+      .join("");
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Expenses Report</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 30px;
+              color: #393939;
+            }
+
+            h1 {
+              font-size: 22px;
+              margin-bottom: 8px;
+            }
+
+            p {
+              color: #727272;
+              font-size: 12px;
+              margin-bottom: 24px;
+            }
+
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+
+            th, td {
+              border: 1px solid #e3e3e3;
+              padding: 10px;
+              text-align: left;
+            }
+
+            th {
+              background: #f5f5f5;
+              font-weight: bold;
+            }
+
+            tr {
+              page-break-inside: avoid;
+            }
+
+            @media print {
+              body {
+                padding: 0;
+              }
+
+              @page {
+                size: landscape;
+                margin: 15mm;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Expenses Report</h1>
+          <p>
+            Generated: ${new Date().toLocaleString()} |
+            Total records: ${filtered.length}
+          </p>
+
+          <table>
+            <thead>
+              <tr>${tableHeaders}</tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+    };
+  };
+
+  const copyData = async () => {
+    const headers = shownColumns.join("\t");
+
+    const rows = filtered.map((expense) =>
+      shownColumns
+        .map((column) => cellValue(expense, column))
+        .join("\t")
+    );
+
+    const textToCopy = [headers, ...rows].join("\n");
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        const textarea = document.createElement("textarea");
+
+        textarea.value = textToCopy;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        const copied = document.execCommand("copy");
+        textarea.remove();
+
+        if (!copied) {
+          throw new Error("Copy failed");
+        }
+      }
+
+      alert("Expenses copied successfully!");
+    } catch (error) {
+      console.error("Copy error:", error);
+      alert("Unable to copy expenses. Please try again.");
+    }
+  };
+
   return (
-    <main className="space-y-4" style={{ fontFamily: "Poppins" }}>
-      <p className="text-sm text-muted-foreground">
-        Finance / <span className="text-[#f30100]">Expenses</span>
-      </p>
+    <main className="space-y-9" style={{ fontFamily: "Poppins" }}>
+      <nav aria-label="Breadcrumb" className="flex items-center gap-3 text-xs">
+        <span className="text-[#5f5f5f]">Finance</span>
+        <ChevronDown className="h-4 w-4 -rotate-90 text-[#5f5f5f]" />
+        <span className="text-[#f30100]">Expenses</span>
+      </nav>
 
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-lg font-medium">Expense List</h1>
+        <h1 className="text-xl font-medium leading-7 text-[#393939]">
+          Expense List
+        </h1>
 
-        <button
+        <Button
           type="button"
           disabled={!code.trim()}
           onClick={() => setModal({ mode: "create" })}
-          className="rounded-lg bg-[#f30100] px-4 py-2 text-sm text-white disabled:opacity-50"
+          leftIcon={<Plus className="h-[18px] w-[18px]" />}
+          className="h-11 bg-[#f30100] px-4 text-sm font-medium text-white hover:bg-[#d90100]"
         >
-          + Create Expense
-        </button>
+          Create Expense
+        </Button>
       </div>
 
       {loadError && (
@@ -1064,43 +1348,66 @@ sheet["!cols"] = shownColumns.map((column) => ({
         </p>
       )}
 
-      <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <input
-            aria-label="Search expenses"
-            placeholder="Search expenses..."
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            className={`${inputClass} max-w-sm`}
-          />
+      {typesQuery.isError && (
+        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+          Unable to load expense types. The issue type list is currently unavailable.
+        </p>
+      )}
+
+      <section className="overflow-hidden rounded-[10px] border border-[#eaeaea] bg-white pt-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        <div className="mb-6 flex flex-wrap items-center gap-3 px-6">
+          <div className="relative w-full max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a1a1a1]" />
+
+            <input
+              aria-label="Search expenses"
+              placeholder="Search by name..."
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              className="h-10 w-full rounded-lg border border-[#e3e3e3] bg-white pl-9 pr-3 text-sm text-[#5f5f5f] transition-colors focus:outline-none focus:ring-2 focus:ring-[#f30100]/20"
+              style={{ fontFamily: "Poppins" }}
+            />
+          </div>
 
           <div className="relative expense-column-menu-container">
             <button
               type="button"
               onClick={() => setShowColumns((value) => !value)}
-              className="flex items-center gap-2 rounded-lg border border-[#e3e3e3] bg-card px-3 py-2 text-sm transition-colors hover:bg-muted"
+              className="flex h-10 items-center gap-2 rounded-lg border border-[#e3e3e3] bg-white px-3 text-sm text-[#5f5f5f] transition-colors hover:bg-[#fafafa]"
+              style={{ fontFamily: "Poppins" }}
             >
-              <FileSpreadsheet className="h-4 w-4" />
               Column Visibility
               <ChevronDown className="h-4 w-4" />
             </button>
+
             {showColumns && (
-              <div className="absolute left-0 top-full z-20 mt-1 w-48 rounded-lg border border-[#e3e3e3] bg-card p-2 shadow-lg">
+              <div
+                className="absolute left-0 top-full z-30 mt-1 w-48 rounded-lg border border-[#e3e3e3] bg-white p-2 shadow-lg"
+                style={{ fontFamily: "Poppins" }}
+              >
                 {columns.map((column) => (
-                  <label key={column} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted">
+                  <label
+                    key={column}
+                    className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-[#5f5f5f] hover:bg-[#fafafa]"
+                  >
                     <input
                       type="checkbox"
+                      aria-label={`Show ${column} column`}
                       checked={visibleColumns.includes(column)}
                       onChange={(event) => {
-                        setVisibleColumns((previous) => event.target.checked
-                          ? [...previous, column]
-                          : previous.filter((item) => item !== column));
+                        const checked = event.target.checked;
+
+                        setVisibleColumns((previous) =>
+                          checked
+                            ? [...previous, column]
+                            : previous.filter((item) => item !== column)
+                        );
                       }}
                       className="rounded border-gray-300"
-                      style={{ accentColor: '#f30100' }}
+                      style={{ accentColor: "#f30100" }}
                     />
                     {column}
                   </label>
@@ -1109,105 +1416,131 @@ sheet["!cols"] = shownColumns.map((column) => ({
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={exportXlsx}
-            disabled={!code.trim() || filtered.length === 0}
-            className={buttonClass}
-          >
-            Export
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowExportMenu((value) => !value)}
+              disabled={!code.trim() || filtered.length === 0}
+              className="flex h-10 items-center gap-2 rounded-lg border border-[#e3e3e3] bg-white px-3 text-sm text-[#5f5f5f] transition-colors hover:bg-[#fafafa] disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ fontFamily: "Poppins" }}
+            >
+              Export
+              <ChevronDown className="h-4 w-4" />
+            </button>
 
-          <button
-            type="button"
-            disabled={!code.trim() || query.isFetching}
-            onClick={() => void query.refetch()}
-            className={buttonClass}
-          >
-            {query.isFetching ? "Refreshing..." : "Refresh"}
-          </button>
+            {showExportMenu && (
+              <div
+                className="absolute left-0 top-full z-30 mt-1 w-32 rounded-lg border border-[#e3e3e3] bg-white p-1 shadow-lg"
+                style={{ fontFamily: "Poppins" }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportXlsx();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full rounded px-3 py-2 text-left text-sm text-[#5f5f5f] hover:bg-[#fafafa]"
+                >
+                  Excel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportPdf();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full rounded px-3 py-2 text-left text-sm text-[#5f5f5f] hover:bg-[#fafafa]"
+                >
+                  PDF
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await copyData();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full rounded px-3 py-2 text-left text-sm text-[#5f5f5f] hover:bg-[#fafafa]"
+                >
+                  Copy
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {showColumns && (
-          <div className="mb-4 flex flex-wrap gap-4 rounded-lg border p-3">
-            {columns.map((column) => (
-              <label key={column} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={visibleColumns.includes(column)}
-                  onChange={(event) => {
-                    const checked = event.target.checked;
-
-                    setVisibleColumns((previous) =>
-                      checked
-                        ? [...previous, column]
-                        : previous.filter((item) => item !== column)
-                    );
-                  }}
-                />
-
-                {column}
-              </label>
-            ))}
-          </div>
+        {loading && (
+          <p className="px-6 py-4 text-sm text-[#5f5f5f]">
+            Loading expenses...
+          </p>
         )}
 
-        {loading && <p className="py-4 text-sm">Loading expenses...</p>}
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto border-y border-[#eaeaea]">
+          <table className="min-w-[1050px] w-full table-fixed text-left text-sm">
             <thead>
-              <tr className="border-b">
+              <tr className="border-b border-[#eaeaea]">
                 {shownColumns.map((column) => (
-                  <th key={column} className="p-3 font-medium">
+                  <th
+                    key={column}
+                    className="h-11 px-6 text-left text-sm font-semibold text-[#4c4c4c]"
+                  >
                     {column}
                   </th>
                 ))}
 
-                <th className="p-3 font-medium">Actions</th>
+                <th className="h-11 px-6 text-left text-sm font-semibold text-[#4c4c4c]">
+                  Actions
+                </th>
               </tr>
             </thead>
 
             <tbody>
               {!loading &&
-                currentExpenses.map((expense) => (
-                  <tr key={expense.id} className="border-b">
-                    {shownColumns.map((column) => {
-                      const receipt = receiptLink(expense.receipt);
+                currentExpenses.map((expense) => {
+                  const receipt = receiptLink(receiptOf(expense));
 
-                      return (
-                        <td key={column} className="p-3">
+                  return (
+                    <tr
+                      key={expense.id}
+                      className="h-16 border-b border-[#eaeaea] last:border-b-0"
+                    >
+                      {shownColumns.map((column) => (
+                        <td
+                          key={column}
+                          className="truncate px-6 text-sm font-medium text-[#5f5f5f]"
+                        >
                           {column === "Receipt" && receipt ? (
                             <a
                               href={receipt}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[#f30100] underline"
+                              className="text-[#f30100] hover:underline"
                             >
-                              Open receipt
+                              Attached
                             </a>
                           ) : (
                             cellValue(expense, column)
                           )}
                         </td>
-                      );
-                    })}
+                      ))}
 
-                    <td className="p-3">
-                      <ExpenseActions
-                        id={expense.id}
-                        onView={() => setModal({ mode: "view", expense })}
-                        onEdit={() => setModal({ mode: "edit", expense })}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                      <td className="px-6">
+                        <ExpenseActions
+                          id={expense.id}
+                          onView={() => setModal({ mode: "view", expense })}
+                          onEdit={() => setModal({ mode: "edit", expense })}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
 
               {!loading && !loadError && filtered.length === 0 && (
                 <tr>
                   <td
                     colSpan={shownColumns.length + 1}
-                    className="p-6 text-center text-muted-foreground"
+                    className="h-16 px-6 text-center text-sm text-[#5f5f5f]"
                   >
                     {search ? "No matching expenses." : "No expenses found."}
                   </td>
@@ -1218,50 +1551,52 @@ sheet["!cols"] = shownColumns.map((column) => ({
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="flex items-center gap-2 text-sm">
-          Show
-          <select
-            value={pageSize}
-            onChange={(event) => {
-              setPageSize(Number(event.target.value));
-              setPage(1);
-            }}
-            className={buttonClass}
-          >
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-          </select>
-          entries per page
-        </label>
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            Show
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setPage(1);
+              }}
+              className={buttonClass}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+            entries per page
+          </label>
 
-        <div className="flex items-center gap-3 text-sm">
-          <button
-            type="button"
-            disabled={activePage === 1}
-            onClick={() => setPage(activePage - 1)}
-            className={buttonClass}
-          >
-            Previous
-          </button>
+          <div className="flex items-center gap-3 text-sm">
+            <button
+              type="button"
+              disabled={activePage === 1}
+              onClick={() => setPage(activePage - 1)}
+              className={buttonClass}
+            >
+              Previous
+            </button>
 
-          <span>
-            Page {activePage} of {totalPages}
-          </span>
+            <span>
+              Page {activePage} of {totalPages}
+            </span>
 
-          <button
-            type="button"
-            disabled={activePage === totalPages}
-            onClick={() => setPage(activePage + 1)}
-            className={buttonClass}
-          >
-            Next
-          </button>
+            <button
+              type="button"
+              disabled={activePage === totalPages}
+              onClick={() => setPage(activePage + 1)}
+              className={buttonClass}
+            >
+              Next
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {response?.meta && (
+      {totalPages > 1 && response?.meta && (
         <p className="text-sm text-muted-foreground">
           Showing {expenses.length} loaded records out of{" "}
           {response.meta.totalItems} total.
