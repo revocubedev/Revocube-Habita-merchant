@@ -4,28 +4,34 @@ import useApiManager from "../useApiManager";
 export interface Expense {
   id: string;
   title: string;
-  issueType?: string;
+  // Create/update responses return `issueTypeId`; a list response may return
+  // `issueType` as a string or an object, so accept all of them.
+  issueType?: string | { id?: string; value?: string; name?: string } | null;
   type?: string;
+  issueTypeId?: string | null;
   amount: number | string;
   date?: string;
   notes?: string | null;
   receipt?: string | null;
+  receiptUrl?: string | null;
   expenseNumber?: string | null;
+  propertyId?: string | null;
+  unitId?: string | null;
   property?: string | { id: string; name: string } | null;
   unit?: string | { id: string; name: string } | null;
 }
 
-
+/** Matches the Postman form-data body for Create / Update Expenses.
+ *  `issueType` is the frontend field; it is sent to the backend as `issueTypeId`. */
 export interface ExpenseInput {
   title: string;
-  issueType?: string;
-  type?: string;
+  issueType: string; // Backend issue type ID
   amount: number;
   date: string;
-  notes?: string;
+  notes: string;
   receipt?: File;
-  property?: string;
-  unit?: string;
+  propertyId?: string;
+  unitId?: string;
 }
 
 export interface Pagination {
@@ -102,7 +108,7 @@ function validateInput(
     throw new Error("Expense title is required");
   }
 
-  if (creating && !input.issueType?.trim() && !input.type?.trim()) {
+  if (creating && !input.issueType?.trim()) {
     throw new Error("Issue type is required");
   }
 
@@ -110,10 +116,7 @@ function validateInput(
     throw new Error("Expense notes are required");
   }
 
-  if (
-    (input.issueType !== undefined && !input.issueType.trim()) ||
-    (input.type !== undefined && !input.type.trim())
-  ) {
+  if (input.issueType !== undefined && !input.issueType.trim()) {
     throw new Error("Issue type cannot be empty");
   }
 
@@ -136,16 +139,14 @@ function validateInput(
   }
 }
 
-function toFormData(input: Partial<ExpenseInput>): FormData {
-  const payload = {
-    ...input,
-    issueType: input.issueType ?? input.type,
-    type: input.type ?? input.issueType,
-  };
+/** The backend expects the issue type as an uppercase ID. */
+const toIssueTypeId = (value: string): string => value.trim().toUpperCase();
 
+/** Builds multipart form-data from any plain object (skips null/undefined). */
+function toFormData(input: Record<string, unknown>): FormData {
   const formData = new FormData();
 
-  Object.entries(payload).forEach(([key, value]) => {
+  Object.entries(input).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
 
     formData.append(
@@ -157,15 +158,9 @@ function toFormData(input: Partial<ExpenseInput>): FormData {
   return formData;
 }
 
+
 export const useCreateExpense = () => {
-  const {
-    callApi,
-    isLoading,
-    data,
-    response,
-    error,
-    isSuccess,
-  } = useApiManager({
+  const { callApi, isLoading, data, response, error, isSuccess } = useApiManager({
     endpoint: "expenses/",
     queryKey: ["get_expenses"],
     method: "POST",
@@ -174,29 +169,29 @@ export const useCreateExpense = () => {
     contentType: "multipart/form-data",
   });
 
-  const createExpense = async (
-    details: ExpenseInput,
-  ): Promise<Expense> => {
+  const createExpense = async (details: ExpenseInput): Promise<Expense> => {
     requireEstateCode();
     validateInput(details, true);
 
-    const result = await callApi(toFormData(details));
+    // Backend field is `issueTypeId`, so don't send `issueType`.
+    const { issueType, ...rest } = details;
 
-    if (!result.success) {
-      throw new Error(result.message || "Could not create expense");
-    }
+    const formData = toFormData({
+      ...rest,
+      title: details.title.trim(),
+      notes: details.notes.trim(),
+      issueTypeId: toIssueTypeId(issueType),
+    });
 
+    // FormData doesn't print in console.log, so inspect it like this:
+    console.log("CREATE EXPENSE:", Object.fromEntries(formData.entries()));
+
+    const result = await callApi(formData);
+    if (!result.success) throw new Error(result.message || "Could not create expense");
     return result.data as Expense;
   };
 
-  return {
-    createExpense,
-    isLoading,
-    data,
-    response,
-    error,
-    isSuccess,
-  };
+  return { createExpense, isLoading, data, response, error, isSuccess };
 };
 
 export const useUpdateExpense = (id?: string) => {
@@ -223,7 +218,20 @@ export const useUpdateExpense = (id?: string) => {
     requireId(id);
     validateInput(details);
 
-    const result = await callApi(toFormData(details));
+    const { issueType, ...rest } = details;
+
+    const formData = toFormData({
+      ...rest,
+      ...(rest.title !== undefined ? { title: rest.title.trim() } : {}),
+      ...(rest.notes !== undefined ? { notes: rest.notes.trim() } : {}),
+      ...(issueType !== undefined
+        ? { issueTypeId: toIssueTypeId(issueType) }
+        : {}),
+    });
+
+    console.log("UPDATE EXPENSE:", Object.fromEntries(formData.entries()));
+
+    const result = await callApi(formData);
 
     if (!result.success) {
       throw new Error(result.message || "Could not update expense");
@@ -247,7 +255,9 @@ export const useGetExpensesCall = (enabled = true) => {
 
   return useGetApiManager<ExpensesResponse>({
     endpoint: "expenses/",
-    queryKey: ["get_expenses", code],
+    // Estate code first, so it matches useApiManager's invalidation key
+    // ([estateCode, "get_expenses"]) and the list refreshes after mutations.
+    queryKey: [code, "get_expenses"],
     isAuth: true,
     isCode: true,
     enabled: enabled && Boolean(code.trim()),
@@ -263,7 +273,7 @@ export const useGetExpenseByIdCall = (
 
   return useGetApiManager({
     endpoint: `expenses/${encodeURIComponent(id?.trim() ?? "")}`,
-    queryKey: ["get_expenses", code, id?.trim() ?? ""],
+    queryKey: [code, "get_expenses", id?.trim() ?? ""],
     isAuth: true,
     isCode: true,
     enabled:
