@@ -1,12 +1,19 @@
-import { useEffect, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import Card from '@/components/ui/Card';
-import { CardContent } from '@/components/ui/Card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import Card from "@/components/ui/Card";
+import { CardContent } from "@/components/ui/Card";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/Table";
+import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
 import {
   type Member,
   type MemberRelation,
@@ -15,25 +22,38 @@ import {
   useRestoreEstateMember,
   useSuspendEstateMember,
   useUnsuspendEstateMember,
-} from '@/api/api_controllers/members';
+} from "@/api/api_controllers/members";
 
-const relationName = (relation: MemberRelation | MemberRelation[] | null | undefined) => {
-  const values = Array.isArray(relation) ? relation : relation ? [relation] : [];
-  const names = values.map((value) => typeof value === 'string' ? value : value.name).filter(Boolean);
-  return names.length ? names.join(', ') : '—';
+const relationName = (
+  relation: MemberRelation | MemberRelation[] | null | undefined
+) => {
+  const values = Array.isArray(relation)
+    ? relation
+    : relation
+    ? [relation]
+    : [];
+  const names = values
+    .map((value) => (typeof value === "string" ? value : value.name))
+    .filter(Boolean);
+  return names.length ? names.join(", ") : "—";
 };
 
 type ActionStatus = {
-  phase: 'pending' | 'success' | 'error';
+  phase: "pending" | "success" | "error";
   message: string;
 };
 
 const backendStatus = (member: Member): ActionStatus => {
-  if (member.isRemoved || member.removed) return { phase: 'error', message: 'Removed' };
-  if (member.isSuspended || member.suspended || member.status?.toLowerCase() === 'suspended') {
-    return { phase: 'error', message: 'Suspended' };
+  if (member.isRemoved || member.removed)
+    return { phase: "error", message: "Removed" };
+  if (
+    member.isSuspended ||
+    member.suspended ||
+    member.status?.toLowerCase() === "suspended"
+  ) {
+    return { phase: "error", message: "Suspended" };
   }
-  return { phase: 'success', message: member.status ?? 'Active' };
+  return { phase: "success", message: member.status ?? "Active" };
 };
 
 /** Each menu uses the row's member.id for all membership-state requests. */
@@ -48,25 +68,29 @@ const MemberActions = ({
   const restore = useRestoreEstateMember(memberId);
   const suspend = useSuspendEstateMember(memberId);
   const unsuspend = useUnsuspendEstateMember(memberId);
-  const isBusy = remove.isLoading || restore.isLoading || suspend.isLoading || unsuspend.isLoading;
+  const isBusy =
+    remove.isLoading ||
+    restore.isLoading ||
+    suspend.isLoading ||
+    unsuspend.isLoading;
 
   const run = async (
     action: () => Promise<unknown>,
     label: string,
     successLabel: string,
     close: () => void,
-    confirm = false,
+    confirm = false
   ) => {
     if (confirm && !window.confirm(`${label} this member?`)) return;
     close();
-    onStatusChange(memberId, { phase: 'pending', message: label });
+    onStatusChange(memberId, { phase: "pending", message: label });
     try {
       await action();
-      onStatusChange(memberId, { phase: 'success', message: successLabel });
+      onStatusChange(memberId, { phase: "success", message: successLabel });
     } catch (error) {
       onStatusChange(memberId, {
-        phase: 'error',
-        message: error instanceof Error ? error.message : 'Action failed',
+        phase: "error",
+        message: error instanceof Error ? error.message : "Action failed",
       });
     }
   };
@@ -74,25 +98,59 @@ const MemberActions = ({
   return (
     <RowActionsMenu
       label="Member actions"
-      triggerIcon={<img src="/assets/ellipsis.svg" alt="" width={18} height={18} />}
+      triggerIcon={
+        <img src="/assets/ellipsis.svg" alt="" width={18} height={18} />
+      }
     >
       {(close) => (
         <>
-          <RowAction disabled={isBusy} onClick={() => run(suspend.suspendEstateMember, 'Suspending', 'Suspended', close, true)}>
+          <RowAction
+            disabled={isBusy}
+            onClick={() =>
+              run(
+                suspend.suspendEstateMember,
+                "Suspending",
+                "Suspended",
+                close,
+                true
+              )
+            }
+          >
             <img src="/assets/edit.svg" alt="" width={16} height={16} />
-            {suspend.isLoading ? 'Suspending...' : 'Suspend'}
+            {suspend.isLoading ? "Suspending..." : "Suspend"}
           </RowAction>
-          <RowAction disabled={isBusy} onClick={() => run(unsuspend.unsuspendEstateMember, 'Unsuspending', 'Active', close)}>
+          <RowAction
+            disabled={isBusy}
+            onClick={() =>
+              run(
+                unsuspend.unsuspendEstateMember,
+                "Unsuspending",
+                "Active",
+                close
+              )
+            }
+          >
             <img src="/assets/edit.svg" alt="" width={16} height={16} />
-            {unsuspend.isLoading ? 'Unsuspending...' : 'Unsuspend'}
+            {unsuspend.isLoading ? "Unsuspending..." : "Unsuspend"}
           </RowAction>
-          <RowAction disabled={isBusy} onClick={() => run(restore.restoreEstateMember, 'Restoring', 'Active', close)}>
+          <RowAction
+            disabled={isBusy}
+            onClick={() =>
+              run(restore.restoreEstateMember, "Restoring", "Active", close)
+            }
+          >
             <img src="/assets/view.svg" alt="" width={16} height={16} />
-            {restore.isLoading ? 'Restoring...' : 'Restore'}
+            {restore.isLoading ? "Restoring..." : "Restore"}
           </RowAction>
-          <RowAction danger disabled={isBusy} onClick={() => run(remove.removeEstateMember, 'Removing', 'Removed', close, true)}>
+          <RowAction
+            danger
+            disabled={isBusy}
+            onClick={() =>
+              run(remove.removeEstateMember, "Removing", "Removed", close, true)
+            }
+          >
             <img src="/assets/delete.svg" alt="" width={16} height={16} />
-            {remove.isLoading ? 'Removing...' : 'Remove'}
+            {remove.isLoading ? "Removing..." : "Remove"}
           </RowAction>
         </>
       )}
@@ -100,27 +158,41 @@ const MemberActions = ({
   );
 };
 
-
 const Members = () => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState(['Member Name', 'Phone Number', 'Address', 'Property', 'Unit', 'Status', 'Actions']);
+  const [visibleColumns, setVisibleColumns] = useState([
+    "Member Name",
+    "Phone Number",
+    "Address",
+    "Property",
+    "Unit",
+    "Status",
+    "Actions",
+  ]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [memberStatuses, setMemberStatuses] = useState<Record<string, ActionStatus>>({});
-  const { data, isLoading, isError } = useGetMembers({ page: currentPage, perPage: pageSize, search: searchQuery });
+  const [memberStatuses, setMemberStatuses] = useState<
+    Record<string, ActionStatus>
+  >({});
+  const { data, isLoading, isError } = useGetMembers({
+    page: currentPage,
+    perPage: pageSize,
+    search: searchQuery,
+  });
 
   const currentMembers = data?.data ?? [];
 
   const columns = [
-    { id: 'Member Name', label: 'Member Name' },
-    { id: 'Phone Number', label: 'Phone Number' },
-    { id: 'Address', label: 'Address' },
-    { id: 'Property', label: 'Property' },
-    { id: 'Unit', label: 'Unit' },
-    // { id: 'Actions', label: 'Actions' },
+    { id: "Member Name", label: "Member Name" },
+    { id: "Phone Number", label: "Phone Number" },
+    { id: "Address", label: "Address" },
+    { id: "Property", label: "Property" },
+    { id: "Unit", label: "Unit" },
+    { id: "Status", label: "Status" },
+    { id: "Actions", label: "Actions" },
   ];
 
   const totalPages = Math.max(1, data?.meta?.totalPages ?? 1);
@@ -128,14 +200,17 @@ const Members = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.column-menu-container') && !target.closest('.export-menu-container')) {
+      if (
+        !target.closest(".column-menu-container") &&
+        !target.closest(".export-menu-container")
+      ) {
         setShowColumnMenu(false);
         setShowExportMenu(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
@@ -328,11 +403,7 @@ const Members = () => {
                       )}
                       {visibleColumns.includes("Property") && (
                         <TableCell className="px-6 text-[#5f5f5f]">
-                          {member.properties?.length
-                            ? member.properties
-                                .map((property) => property.name)
-                                .join(", ")
-                            : "—"}
+                          {relationName(member.properties)}
                         </TableCell>
                       )}
                       {visibleColumns.includes("Unit") && (
@@ -340,77 +411,37 @@ const Members = () => {
                           {relationName(member.units)}
                         </TableCell>
                       )}
-                      {visibleColumns.includes("Status") && (() => {
-                        const status = memberStatuses[member.id] ?? backendStatus(member);
-                        return (
-                          <TableCell className="px-6">
-                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                              status.phase === 'pending'
-                                ? 'bg-blue-50 text-blue-700'
-                                : status.phase === 'error'
-                                  ? 'bg-red-50 text-red-600'
-                                  : 'bg-green-50 text-green-700'
-                            }`}>
-                              {status.message}
-                            </span>
-                          </TableCell>
-                        );
-                      })()}
+                      {visibleColumns.includes("Status") &&
+                        (() => {
+                          const status =
+                            memberStatuses[member.id] ?? backendStatus(member);
+                          return (
+                            <TableCell className="px-6">
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                                  status.phase === "pending"
+                                    ? "bg-blue-50 text-blue-700"
+                                    : status.phase === "error"
+                                    ? "bg-red-50 text-red-600"
+                                    : "bg-green-50 text-green-700"
+                                }`}
+                              >
+                                {status.message}
+                              </span>
+                            </TableCell>
+                          );
+                        })()}
                       {visibleColumns.includes("Actions") && (
                         <TableCell className="px-6">
                           <MemberActions
                             memberId={member.id}
-                            onStatusChange={(id, status) => setMemberStatuses((current) => ({ ...current, [id]: status }))}
-                          />
-                          {member.units?.length
-                            ? member.units.map((unit) => unit.name).join(", ")
-                            : "—"}
-                        </TableCell>
-                      )}
-                      {visibleColumns.includes("Actions") && (
-                        <TableCell className="text-right">
-                          {/* <RowActionsMenu
-                            triggerIcon={
-                              <img
-                                src="/assets/ellipsis.svg"
-                                alt="Open member actions"
-                                width={18}
-                                height={18}
-                              />
+                            onStatusChange={(id, status) =>
+                              setMemberStatuses((current) => ({
+                                ...current,
+                                [id]: status,
+                              }))
                             }
-                          >
-                            {(close) => (
-                              <>
-                                <RowAction onClick={close}>
-                                  <img
-                                    src="/assets/view.svg"
-                                    alt=""
-                                    width={16}
-                                    height={16}
-                                  />
-                                  View Details
-                                </RowAction>
-                                <RowAction onClick={close}>
-                                  <img
-                                    src="/assets/edit.svg"
-                                    alt=""
-                                    width={16}
-                                    height={16}
-                                  />
-                                  Edit
-                                </RowAction>
-                                <RowAction danger onClick={close}>
-                                  <img
-                                    src="/assets/delete.svg"
-                                    alt=""
-                                    width={16}
-                                    height={16}
-                                  />
-                                  Delete
-                                </RowAction>
-                              </>
-                            )}
-                          </RowActionsMenu> */}
+                          />
                         </TableCell>
                       )}
                     </TableRow>
