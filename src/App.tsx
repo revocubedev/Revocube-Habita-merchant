@@ -33,6 +33,7 @@ import { Toaster } from 'sonner';
 import { estatePath, getDefaultEstateCode, getStoredEstateCodes } from '@/lib/estateRoutes';
 import LoggedHistory from './pages/management/LoggedHistory';
 import AdminLogin from './pages/AdminLogin';
+import InitiatePayment from './components/finance/IntiatePayment';
 
 // Query Client Configuration
 const queryClient = new QueryClient({
@@ -158,6 +159,7 @@ function AppContent() {
         <Route path="types" element={<Types />} />
         <Route path="email-notification" element={<EmailNotification />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="payment" element={<InitiatePayment />} />
         <Route path="*" element={<EstateFallback />} />
       </Route>
     </Routes>

@@ -4,6 +4,7 @@ import { useGetAdminRoles } from '@/api/api_controllers/adminController';
 import { useInviteAdmin } from '@/api/api_controllers/userController';
 import ProfileTab from '@/components/portal/ProfileTab';
 import PasswordTab from '@/components/portal/PasswordTab';
+import InitiatePayment from '@/components/finance/IntiatePayment';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('User Profile');
@@ -63,7 +64,7 @@ const Settings = () => {
     // { id: 'General', label: 'General', description: 'General Settings', icon: SettingsIcon },
     // { id: 'Company', label: 'Company', description: 'Platform Settings', icon: Building },
     // { id: 'Email', label: 'Email', description: 'Email SMTP Settings', icon: Mail },
-    // { id: 'Payment', label: 'Payment', description: 'Payment Settings', icon: CreditCard },
+    { id: 'Payment', label: 'Payment', description: 'Payment Settings', icon: CreditCard },
     // { id: 'Site SEO', label: 'Site SEO', description: 'Site SEO Settings', icon: Search },
   ];
 
@@ -126,8 +127,8 @@ const Settings = () => {
                 border: "none",
               }}
             >
-               <ProfileTab />
-              </div>
+              <ProfileTab />
+            </div>
           )}
 
           {activeTab === "Admin Management" && (
@@ -265,18 +266,23 @@ const Settings = () => {
             </form>
           )}
 
-          {activeTab !== "User Profile" && activeTab !== "Admin Management" && (
+          {/* Password Settings */}
+          {activeTab === "Password" && (
             <div
               className="bg-card border border-border rounded-lg p-6"
               style={{ borderColor: "#e3e3e3", borderRadius: "12px" }}
             >
-              <p
-                className="text-muted-foreground"
-                style={{ fontFamily: "Poppins" }}
-              >
-                  {tabs.find((t) => t.id === activeTab)?.label} 
-                  <PasswordTab />
-              </p>
+              <PasswordTab />
+            </div>
+          )}
+
+          {/* Payment Settings */}
+          {activeTab === "Payment" && (
+            <div
+              className="bg-card border border-border rounded-lg p-6"
+              style={{ borderColor: "#e3e3e3", borderRadius: "12px" }}
+            >
+              <InitiatePayment />
             </div>
           )}
         </div>

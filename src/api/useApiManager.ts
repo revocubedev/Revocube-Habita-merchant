@@ -55,7 +55,12 @@ const useApiManager = ({
     const url = buildUrl(endpoint, isCode, estateCode);
     const config = {
       // Let the browser supply the multipart boundary instead of inheriting JSON headers.
-      headers: details instanceof FormData ? { "Content-Type": undefined } : contentType ? { "Content-Type": contentType } : undefined,
+      headers:
+        details instanceof FormData
+          ? {}
+          : contentType
+            ? { "Content-Type": contentType }
+            : undefined,
       withCredentials: true,
     };
 
@@ -113,12 +118,14 @@ const useApiManager = ({
       if (showSuccessToastt && (successMessage || response?.message)) {
         toast.success(successMessage || response.message);
       }
+
       queryKey.forEach((key) => {
-        if (key) {
-          queryClient.invalidateQueries({
-            queryKey: isCode ? [estateCode, key] : [key],
-          });
-        }
+        if (!key) return;
+        queryClient.invalidateQueries({
+          // Matches ["get_expenses"], [code, "get_expenses"],
+          // [code, "get_expenses", id], etc., whatever the order.
+          predicate: (query) => query.queryKey.includes(key),
+        });
       });
     },
     onError: (error: Error) => {

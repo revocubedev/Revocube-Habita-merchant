@@ -2,7 +2,7 @@ import useApiManager from "../useApiManager";
 import useGetApiManager from "../useGetApiManager";
 
 export const TYPE_CATEGORIES = [
-  "EXPENSES_ISSUE_TYPE",
+  "EXPENSE_ISSUE_TYPE",
   "PROPERTY_TYPE",
   "MAINTAINER_TYPE",
   "INVOICE_TYPE",
@@ -56,7 +56,7 @@ export const extractTypes = (
 
 // Convenience wrappers
 export const useGetExpenseTypes = (enabled = true) =>
-  useGetTypesByCategory("EXPENSES_ISSUE_TYPE", { enabled });
+  useGetTypesByCategory("EXPENSE_ISSUE_TYPE", { enabled });
 export const useGetPropertyTypes = (enabled = true) =>
   useGetTypesByCategory("PROPERTY_TYPE", { enabled });
 export const useGetMaintainerTypes = (enabled = true) =>
