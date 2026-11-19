@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Save } from 'lucide-react';
 
 import Button from '@/components/ui/Button';
@@ -36,7 +36,7 @@ export default function InvoiceFormDrawer({
   const [form, setForm] = useState<InvoiceValues>(() =>
     invoice
       ? {
-          type: invoice.type,
+          typeId: invoice.typeId || '',
           payment: invoice.payment,
           frequency: invoice.frequency,
           amount: Number(invoice.amount),
@@ -51,7 +51,7 @@ export default function InvoiceFormDrawer({
             invoice.receivingAccountId || invoice.receivingAccount?.id || '',
         }
       : {
-          type: '',
+          typeId: '',
           payment: 'RECURRING_PAYMENT',
           frequency: 'MONTHLY',
           amount: 0,
@@ -79,8 +79,18 @@ export default function InvoiceFormDrawer({
     isError: invoiceTypesError,
   } = useGetInvoiceTypes();
   const invoiceTypes = extractTypes(invoiceTypesData);
+  const selectedType = invoiceTypes.find((type) => type.id === form.typeId);
   const currentTypeIsMissing =
-    !!form.type && !invoiceTypes.some((type) => type.value === form.type);
+    !!form.typeId && !selectedType;
+
+  useEffect(() => {
+    if (!invoice || form.typeId || !invoice.type) return;
+
+    const matchingType = invoiceTypes.find((type) => type.value === invoice.type);
+    if (matchingType) {
+      setForm((current) => ({ ...current, typeId: matchingType.id }));
+    }
+  }, [invoice, invoiceTypes, form.typeId]);
 
   const { accounts } = useGetReceivingAccounts();
 
@@ -163,6 +173,7 @@ export default function InvoiceFormDrawer({
 
   const summary: Invoice = {
     ...form,
+    type: selectedType?.value || invoice?.type || '',
 
     id: invoice?.id || '',
     invoiceNumber: invoice?.invoiceNumber || '',
@@ -233,10 +244,10 @@ export default function InvoiceFormDrawer({
             <Field label="Type">
               <select
                 className={inputCls}
-                value={form.type}
+                value={form.typeId}
                 required
-                disabled={loadingInvoiceTypes || (invoiceTypes.length === 0 && !form.type)}
-                onChange={e => set('type', e.target.value)}
+                disabled={loadingInvoiceTypes || (invoiceTypes.length === 0 && !form.typeId)}
+                onChange={e => set('typeId', e.target.value)}
               >
                 <option value="">
                   {loadingInvoiceTypes
@@ -248,10 +259,10 @@ export default function InvoiceFormDrawer({
                     : 'Select invoice type'}
                 </option>
                 {currentTypeIsMissing && (
-                  <option value={form.type}>{invoiceLabel(form.type)}</option>
+                  <option value={form.typeId}>{invoiceLabel(invoice?.type || '')}</option>
                 )}
                 {invoiceTypes.map((type) => (
-                  <option key={type.id} value={type.value}>
+                  <option key={type.id} value={type.id}>
                     {type.label}
                   </option>
                 ))}

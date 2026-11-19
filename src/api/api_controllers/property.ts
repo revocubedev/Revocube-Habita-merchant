@@ -65,7 +65,7 @@ export interface BulkPropertyImportResponse {
 const QUERY_KEY = "get_properties";
 
 function estateCode(): string {
-  return localStorage.getItem("code")?.trim() ?? "";
+  return localStorage.getItem("est_code")?.trim() ?? "";
 }
 
 function requireEstate(): void {

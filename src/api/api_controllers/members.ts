@@ -103,7 +103,7 @@ export function parseMembersResponse(payload: unknown): MembersResponse {
   };
 }
 
-const estateCode = () => localStorage.getItem("code")?.trim() ?? "";
+const estateCode = () => localStorage.getItem("est_code")?.trim() ?? "";
 
 const requireMemberId = (id?: string) => {
   const memberId = id?.trim();

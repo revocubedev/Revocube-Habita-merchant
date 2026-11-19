@@ -1015,7 +1015,7 @@ function ExpenseModal({
 }
 
 export default function Expense() {
-  const code = localStorage.getItem("code") ?? "";
+  const code = localStorage.getItem("est_code") ?? "";
   const query = useGetExpensesCall();
 
   const typesQuery = useGetExpenseTypes();

@@ -124,8 +124,11 @@ const Invoices = () => {
     data: invoiceTypesData,
     isLoading: loadingInvoiceTypes,
     isError: invoiceTypesError,
-  } = useGetInvoiceTypes(filterOpen);
+  } = useGetInvoiceTypes();
   const invoiceTypes = extractTypes(invoiceTypesData);
+  const typeLabel = (invoice: Invoice) =>
+    invoiceTypes.find((type) => type.id === invoice.typeId)?.label ||
+    invoiceLabel(invoice.type);
 
   const totalPages = Math.max(1, query.meta?.totalPages || 1);
 
@@ -150,7 +153,7 @@ const Invoices = () => {
 
   const getRowCells = (invoice: Invoice) => [
     invoice.invoiceNumber,
-    invoiceLabel(invoice.type),
+    typeLabel(invoice),
     invoice.propertyScope === 'ENTIRE_ESTATE'
       ? 'Entire Estate'
       : invoice.properties.map((p) => p.name).join(', ') || '—',

@@ -6,7 +6,7 @@ export const FREQUENCIES = ['MONTHLY', 'YEARLY'] as const;
 
 
 export const invoiceSchema = z.object({
-  type: z.string().min(1),
+  typeId: z.string().uuid('Select an invoice type.'),
 
   payment: z.enum(['ONE_TIME_PAYMENT', 'RECURRING_PAYMENT']),
 
@@ -69,6 +69,7 @@ export interface Invoice {
   id: string;
   invoiceNumber: string;
   type: string;
+  typeId?: string;
   payment: InvoiceValues['payment'];
 
   frequency: InvoiceValues['frequency'];
@@ -107,6 +108,7 @@ export interface Invoice {
 
 
 export function normalizeInvoice(value: Invoice): Invoice {
+  const invoiceType = (value as Invoice & { invoiceType?: string }).invoiceType;
   const unwrap = (
     items: unknown,
     key: 'property' | 'unit'
@@ -117,6 +119,7 @@ export function normalizeInvoice(value: Invoice): Invoice {
 
   return {
     ...value,
+    type: value.type ?? invoiceType ?? '',
     properties: unwrap(value.properties, 'property'),
     units: unwrap(value.units, 'unit'),
   };
@@ -142,12 +145,14 @@ export function invoicePayload(values: InvoiceValues): InvoiceValues {
 }
 
 
-export const invoiceLabel = (value: string) =>
+export const invoiceLabel = (value?: string | null) =>
   value
-    .toLowerCase()
-    .split('_')
-    .map(s => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(' ');
+    ? value
+        .toLowerCase()
+        .split('_')
+        .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+        .join(' ')
+    : '—';
 
 
 export const invoiceMoney = (value: number | string) =>

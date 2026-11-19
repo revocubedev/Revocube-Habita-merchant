@@ -24,7 +24,7 @@ export interface EstateRulesResponse {
 const QUERY_KEY = "get_estate_rules";
 
 const estateCode = () =>
-  localStorage.getItem("code")?.trim() ?? "";
+  localStorage.getItem("est_code")?.trim() ?? "";
 
 const isRecord = (
   value: unknown

@@ -12,7 +12,7 @@ const AdminLogin = () => {
   const { login } = useAuth();
 
   const [estateCode, setEstateCode] = useState(
-    localStorage.getItem("code") || ""
+    localStorage.getItem("est_code") || ""
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -73,7 +73,7 @@ const AdminLogin = () => {
         role: managerData?.role || "Admin",
       };
 
-      localStorage.setItem("code", activeEstateCode);
+      localStorage.setItem("est_code", activeEstateCode);
       localStorage.setItem("estates", JSON.stringify(estates));
 
       login(token, userData);

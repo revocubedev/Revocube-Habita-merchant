@@ -16,8 +16,8 @@ export const getStoredEstateCodes = (): string[] => {
 };
 
 export const getDefaultEstateCode = (): string | null => {
-  const saved = localStorage.getItem('code');
+  const saved = localStorage.getItem('est_code')?.trim();
+  if (!saved) return null;
   const codes = getStoredEstateCodes();
-  if (saved && (codes.length === 0 || codes.includes(saved))) return saved;
-  return codes[0] || null;
+  return codes.length === 0 || codes.includes(saved) ? saved : null;
 };
