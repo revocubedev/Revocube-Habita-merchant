@@ -17,6 +17,7 @@ import {
   useGetInvoice,
   useIssueInvoice,
 } from '@/api/api_controllers/invoiceController';
+import { extractTypes, useGetInvoiceTypes } from '@/api/api_controllers/types';
 
 import {
   Invoice,
@@ -27,6 +28,9 @@ import {
 
 
 export function InvoiceSummary({ invoice }: { invoice: Invoice }) {
+  const { data: invoiceTypesData } = useGetInvoiceTypes();
+  const typeLabel = extractTypes(invoiceTypesData)
+    .find((type) => type.id === invoice.typeId)?.label || invoiceLabel(invoice.type);
   return (
     <div className="space-y-7">
       <div className="flex justify-between gap-4 flex-wrap">
@@ -123,7 +127,7 @@ export function InvoiceSummary({ invoice }: { invoice: Invoice }) {
         <TableBody>
           <TableRow>
             <TableCell>
-              {invoiceLabel(invoice.type)}
+              {typeLabel}
             </TableCell>
 
             <TableCell>

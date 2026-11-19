@@ -144,18 +144,6 @@ function displayDate(value?: string): string {
         year: "numeric",
       });
 }
-// function formatAmount(raw: string): string {
-//   if (!raw) return "";
-//   const [int, dec] = raw.split(".");
-//   const withCommas = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-//   return dec !== undefined ? `${withCommas}.${dec}` : withCommas;
-// }
-
-function cleanAmount(input: string): string {
-  const cleaned = input.replace(/[^\d.]/g, "");
-  const [int, ...rest] = cleaned.split(".");
-  return rest.length ? `${int}.${rest.join("").slice(0, 2)}` : int;
-}
 function inputDate(value?: string): string {
   if (!value) return "";
 
@@ -682,7 +670,6 @@ function ExpenseModal({
                   }
                   className={controlClass}
                 />
-                <Input required type="text" inputMode="decimal" placeholder="0.00" value={formatAmount(form.amount)} onChange={(event) => change("amount", cleanAmount(event.target.value))} className={controlClass} />
               </Field>
             </div>
 
@@ -820,8 +807,6 @@ function ExpenseModal({
                   onChange={(event) =>
                     change("amount", formatAmount(event.target.value))
                   }
-                  value={formatAmount(form.amount)}
-                  onChange={(e) => change("amount", cleanAmount(e.target.value))}
                   className={inputClass}
                 />
               </label>
@@ -904,7 +889,7 @@ function ExpenseModal({
 }
 
 export default function Expense() {
-  const code = localStorage.getItem("code") ?? "";
+  const code = localStorage.getItem("est_code") ?? "";
   const query = useGetExpensesCall();
 
   const [search, setSearch] = useState("");

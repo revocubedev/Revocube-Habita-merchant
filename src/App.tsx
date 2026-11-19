@@ -91,7 +91,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function ActiveEstate({ code, children }: { code: string; children: React.ReactNode }) {
   useEffect(() => {
-    localStorage.setItem('code', code);
+    localStorage.setItem('est_code', code);
   }, [code]);
   return <>{children}</>;
 }

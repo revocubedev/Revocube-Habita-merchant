@@ -76,7 +76,7 @@ const getRefreshedToken = (): Promise<string> => {
 
 const handleRefreshFailure = () => {
   localStorage.removeItem("token");
-  localStorage.removeItem("code");
+  localStorage.removeItem("est_code");
   localStorage.removeItem("estates");
   window.location.href = getRedirectUrl();
 };

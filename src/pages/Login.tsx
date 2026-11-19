@@ -63,8 +63,8 @@ const Login = () => {
         role: managerData?.role || "Admin",
       };
 
-      // Set before navigating: hooks read "code" from localStorage
-      localStorage.setItem("code", estateCode);
+      // Set before navigating: hooks read "est_code" from localStorage
+      localStorage.setItem("est_code", estateCode);
       localStorage.setItem("estates", JSON.stringify(estates));
       login(token, userData);
 

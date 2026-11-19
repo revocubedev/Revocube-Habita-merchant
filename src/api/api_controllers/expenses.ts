@@ -84,7 +84,7 @@ function requireId(id?: string): string {
 }
 
 function requireEstateCode(): void {
-  const code = localStorage.getItem("code");
+  const code = localStorage.getItem("est_code");
 
   if (!code?.trim()) {
     throw new Error("Estate code is missing");
@@ -243,7 +243,7 @@ export const useUpdateExpense = (id?: string) => {
 };
 
 export const useGetExpensesCall = (enabled = true) => {
-  const code = localStorage.getItem("code") ?? "";
+  const code = localStorage.getItem("est_code") ?? "";
 
   return useGetApiManager<ExpensesResponse>({
     endpoint: "expenses/",
@@ -259,7 +259,7 @@ export const useGetExpenseByIdCall = (
   id?: string,
   enabled = true,
 ) => {
-  const code = localStorage.getItem("code") ?? "";
+  const code = localStorage.getItem("est_code") ?? "";
 
   return useGetApiManager({
     endpoint: `expenses/${encodeURIComponent(id?.trim() ?? "")}`,
