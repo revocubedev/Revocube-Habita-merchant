@@ -29,6 +29,29 @@ export interface ResolvedBankAccount {
 
 const QUERY_KEY = "get_receiving_accounts";
 
+export interface ReceivingAccountOtpResponse {
+  success: boolean;
+  message: string;
+  data: {
+    email: string;
+    expiresInMinutes: number;
+  };
+}
+
+export const useRequestReceivingAccountOtp = () => {
+  const { callApi, isLoading } = useApiManager({
+    endpoint: "receive-payments/request-otp",
+    method: "POST",
+    isAuth: true,
+    isCode: true,
+    showSuccessToastt: false,
+  });
+
+  const requestOtp = (values: { accountNumber: string; bankName: string }): Promise<ReceivingAccountOtpResponse> => callApi(values);
+
+  return { requestOtp, isLoading };
+};
+
 // GET /:code/receive-payments/
 export const useGetReceivingAccounts = (enabled = true) => {
   const query = useGetApiManager({
@@ -56,7 +79,7 @@ export const useCreateReceivingAccount = () => {
     queryKey: [QUERY_KEY],
   });
 
-  const createAccount = (values: ReceivingAccountFormValues) => callApi(values);
+  const createAccount = (values: { otp: string }) => callApi(values);
 
   return { createAccount, isLoading };
 };

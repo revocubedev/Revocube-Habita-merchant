@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Settings, ChevronDown, LogOut, Menu } from 'lucide-react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import type { Theme } from '@/types';
 import { estatePath } from '@/lib/estateRoutes';
@@ -13,6 +13,7 @@ interface HeaderProps {
 
 const Header = ({ onMenuToggle }: HeaderProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { estateCode = '' } = useParams();
   const { user, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
@@ -47,6 +48,12 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
     if (path === '/email-notification') return 'Email Notification';
     if (path === '/settings') return 'Settings';
     return 'Dashboard';
+  };
+
+  const handleLogout = () => {
+    logout();
+    setShowDropdown(false);
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -103,10 +110,7 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
             {showDropdown && (
               <div ref={dropdownRef} className="absolute right-0 top-12 bg-white border border-border rounded-lg shadow-lg py-2 min-w-[160px] z-50">
                 <button
-                  onClick={() => {
-                    logout();
-                    setShowDropdown(false);
-                  }}
+                  onClick={handleLogout}
                   className="w-full px-4 py-2 text-left text-sm hover:bg-muted flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                   style={{ fontFamily: 'Poppins' }}
                 >

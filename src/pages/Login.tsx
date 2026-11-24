@@ -2,10 +2,20 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
-import useApiManager from "@/api/useApiManager"; // adjust to where your hook lives
+import useApiManager from "@/api/useApiManager";
+import type { TwoFactorLoginResponse } from "@/api/api_controllers/twoFactorController";
 import { useAuth } from "@/lib/auth";
 import type { User } from "@/types";
 import { estatePath } from "@/lib/estateRoutes";
+
+type LoginResponse =
+  | (TwoFactorLoginResponse & { requiresTwoFactor?: false })
+  | {
+      success: boolean;
+      requiresTwoFactor: true;
+      message: string;
+      data: { challengeToken: string; expiresIn: number };
+    };
 
 const Login = () => {
   const navigate = useNavigate();
@@ -26,9 +36,19 @@ const Login = () => {
     e.preventDefault();
 
     try {
-      const response = await loginRequest({ email, password });
+      const response: LoginResponse = await loginRequest({ email, password });
 
-      const token: string = response?.data?.token || response?.token || "";
+      if (response.requiresTwoFactor === true) {
+        navigate("/2fa-verify", {
+          state: {
+            challengeToken: response.data.challengeToken,
+            expiresIn: response.data.expiresIn,
+          },
+        });
+        return;
+      }
+
+      const { token, manager, estates } = response.data;
       if (!token) {
         Swal.fire({
           icon: "error",
@@ -39,8 +59,6 @@ const Login = () => {
         return;
       }
 
-      const managerData = response?.data?.manager || response?.manager;
-      const estates: any[] = response?.data?.estates || [];
       const estateCode: string | undefined = estates[0]?.estateCode;
 
       if (!estateCode) {
@@ -54,13 +72,10 @@ const Login = () => {
       }
 
       const userData: User = {
-        id: managerData?.id || "",
-        name:
-          [managerData?.firstName, managerData?.lastName]
-            .filter(Boolean)
-            .join(" ") || "Estate Manager",
-        email: managerData?.email || email,
-        role: managerData?.role || "Admin",
+        id: manager.id,
+        name: `${manager.firstName} ${manager.lastName}`.trim(),
+        email: manager.email,
+        role: "",
       };
 
       // Set before navigating: hooks read "est_code" from localStorage

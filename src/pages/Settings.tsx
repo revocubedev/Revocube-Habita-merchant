@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Upload, User, Shield, Lock, Settings as SettingsIcon, Building, Mail, CreditCard, Search, ChevronDown } from 'lucide-react';
+import { User, Shield, Lock, CreditCard, ChevronDown, ShieldCheck } from 'lucide-react';
 import { useGetAdminRoles } from '@/api/api_controllers/adminController';
 import { useInviteAdmin } from '@/api/api_controllers/userController';
 import ProfileTab from '@/components/portal/ProfileTab';
 import PasswordTab from '@/components/portal/PasswordTab';
+import TwoFactorTab from '@/components/portal/TwoFactorTab';
 import InitiatePayment from '@/components/finance/IntiatePayment';
 
 const Settings = () => {
@@ -61,6 +62,7 @@ const Settings = () => {
     { id: 'User Profile', label: 'User Profile', description: 'User Account Profile Settings', icon: User },
     { id: 'Admin Management', label: 'Admin Management', description: 'Admin Settings', icon: Shield },
     { id: 'Password', label: 'Password', description: 'Password Settings', icon: Lock },
+    { id: 'Two-Factor Auth', label: 'Two-Factor Auth', description: 'Two-Factor Authentication', icon: ShieldCheck },
     // { id: 'General', label: 'General', description: 'General Settings', icon: SettingsIcon },
     // { id: 'Company', label: 'Company', description: 'Platform Settings', icon: Building },
     // { id: 'Email', label: 'Email', description: 'Email SMTP Settings', icon: Mail },
@@ -274,6 +276,11 @@ const Settings = () => {
             >
               <PasswordTab />
             </div>
+          )}
+
+          {/* Two-Factor Authentication */}
+          {activeTab === "Two-Factor Auth" && (
+            <TwoFactorTab />
           )}
 
           {/* Payment Settings */}
