@@ -1,328 +1,68 @@
-
-import { useState, useEffect } from 'react';
-import { Search, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2, Eye } from 'lucide-react';
-import Card from '@/components/ui/Card';
-import { CardContent } from '@/components/ui/Card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
-import { mockEmailNotifications } from '@/lib/mockData';
+import { Loader2, Mail } from 'lucide-react';
+import Card, { CardContent } from '@/components/ui/Card';
+import { useGetEmailPreferences, useUpdateEmailPreferences, type EmailPreference } from '@/api/api_controllers/emailPreferenceController';
 
 const EmailNotification = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showColumnMenu, setShowColumnMenu] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState(['Module', 'Subject', 'Status', 'Actions']);
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-
-  const filteredNotifications = mockEmailNotifications.filter((notification) =>
-    notification.module.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    notification.subject.toLowerCase().includes(searchQuery.toLowerCase())
-  ).filter((notification) => {
-    if (statusFilter === 'All') return true;
-    return notification.status === statusFilter;
-  });
-
-  const columns = [
-    { id: 'Module', label: 'Module' },
-    { id: 'Subject', label: 'Subject' },
-    { id: 'Status', label: 'Status' },
-    { id: 'Actions', label: 'Actions' },
-  ];
-
-  const totalPages = Math.ceil(filteredNotifications.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const currentNotifications = filteredNotifications.slice(startIndex, endIndex);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.column-menu-container') && !target.closest('.export-menu-container')) {
-        setShowColumnMenu(false);
-        setShowExportMenu(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const getStatusBadgeStyle = (status: string) => {
-    switch (status) {
-      case 'Enabled':
-        return { backgroundColor: '#E5F9EC', color: '#27964F' };
-      case 'Disabled':
-        return { backgroundColor: '#F3F4F6', color: '#6B7280' };
-      default:
-        return { backgroundColor: '#f3f4f6', color: '#6b7280' };
+  const { data: preferences, isPending, isError, isFetching, refetch } = useGetEmailPreferences();
+  const { updatePreferences, isLoading: saving } = useUpdateEmailPreferences();
+  const togglePreference = async (preference: EmailPreference) => {
+    try {
+      await updatePreferences([{ notificationType: preference.notificationType, isEnabled: !preference.isEnabled }]);
+    } catch {
+      // The API manager displays the error; retain the saved preference.
     }
   };
 
   return (
-    <div className="space-y-4">
-      {/* Page Heading */}
-      <h1 className="text-2xl font-display font-semibold text-foreground" style={{ fontFamily: 'Poppins', fontWeight: 600, color: '#393939' }}>
-        Email Notification
-      </h1>
-
-      {/* Section Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-[16px] font-display font-medium text-foreground" style={{ fontFamily: 'Poppins', fontWeight: 500, color: '#4c4c4c' }}>
-          Notification List
-        </h2>
-        <button
-          className="text-sm text-white transition-colors flex items-center gap-2 px-4 py-2"
-          style={{ 
-            fontFamily: 'Poppins', 
-            borderRadius: '8px', 
-            backgroundColor: '#f30100',
-            border: 'none'
-          }}
-        >
-          + Create Notification
-        </button>
+    <div className="space-y-6" style={{ fontFamily: 'Poppins' }}>
+      <div>
+        <h1 className="text-2xl font-display font-semibold text-foreground">Email Notification</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Manage your email notification preferences for this estate.</p>
       </div>
-
-      {/* Data Table with Toolbar */}
-      <Card 
-        className="bg-card border border-border"
-        style={{ 
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-        }}
-      >
-        <CardContent className="p-4">
-          {/* Table Toolbar */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 max-w-sm relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                placeholder="Search by name..."
-                className="w-full pl-9 pr-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-brand-text/20 transition-colors"
-                style={{ fontFamily: 'Poppins', borderColor: '#e3e3e3' }}
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
+      <Card className="bg-card border border-border rounded-xl">
+        <CardContent className="p-6">
+          <h2 className="text-base font-medium text-foreground mb-5">Email preferences</h2>
+          {isPending ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading preferences…
+            </p>
+          ) : isError ? (
+            <div className="flex items-center gap-3 text-sm">
+              <p className="text-destructive">Could not load email preferences.</p>
+              <button type="button" onClick={() => void refetch()} className="underline">Retry</button>
             </div>
-
-            {/* Column Visibility Dropdown */}
-            <div className="relative column-menu-container">
-              <button
-                onClick={() => setShowColumnMenu(!showColumnMenu)}
-                className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-card hover:bg-muted transition-colors"
-                style={{ fontFamily: 'Poppins', borderRadius: '8px', borderColor: '#e3e3e3' }}
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                Column Visibility
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              {showColumnMenu && (
-                <div className="absolute top-full left-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-lg p-2 z-10" style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}>
-                  {columns.filter(col => col.id !== 'Actions').map((col) => (
-                    <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-muted rounded" style={{ fontFamily: 'Poppins' }}>
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns.includes(col.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setVisibleColumns([...visibleColumns, col.id]);
-                          } else {
-                            setVisibleColumns(visibleColumns.filter((c) => c !== col.id));
-                          }
-                        }}
-                        className="rounded border-gray-300"
-                        style={{ accentColor: '#f30100' }}
-                      />
-                      {col.label}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Status Filter Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setStatusFilter(statusFilter === 'All' ? 'Enabled' : statusFilter === 'Enabled' ? 'Disabled' : 'All')}
-                className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-card hover:bg-muted transition-colors"
-                style={{ fontFamily: 'Poppins', borderRadius: '8px', borderColor: '#e3e3e3' }}
-              >
-                {statusFilter}
-                <ChevronDown className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Export Dropdown */}
-            <div className="relative export-menu-container">
-              <button
-                onClick={() => setShowExportMenu(!showExportMenu)}
-                className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-card hover:bg-muted transition-colors"
-                style={{ fontFamily: 'Poppins', borderRadius: '8px', borderColor: '#e3e3e3' }}
-              >
-                <FileText className="w-4 h-4" />
-                Export
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              {showExportMenu && (
-                <div className="absolute top-full left-0 mt-1 w-32 bg-card border border-border rounded-lg shadow-lg p-1 z-10" style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}>
-                  <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded" style={{ fontFamily: 'Poppins' }}>
-                    Excel
-                  </button>
-                  <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded" style={{ fontFamily: 'Poppins' }}>
-                    PDF
-                  </button>
-                  <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded" style={{ fontFamily: 'Poppins' }}>
-                    Copy
+          ) : preferences?.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No email preferences are available.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {preferences?.map((preference) => (
+                <div key={preference.notificationType} className="flex items-center justify-between gap-6 py-4">
+                  <div className="flex items-start gap-3">
+                    <Mail className="w-5 h-5 text-muted-foreground shrink-0 mt-1" />
+                    <div>
+                      <h3 id={`label-${preference.notificationType}`} className="text-sm font-medium text-foreground">Estate join requests</h3>
+                      <p id={`description-${preference.notificationType}`} className="mt-1 text-sm text-muted-foreground">Receive an email when someone requests to join this estate.</p>
+                      <p className="mt-2 text-xs text-muted-foreground">{preference.isEnabled ? 'Enabled' : 'Disabled'}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button" role="switch" aria-checked={preference.isEnabled}
+                    aria-labelledby={`label-${preference.notificationType}`}
+                    aria-describedby={`description-${preference.notificationType}`}
+                    disabled={saving || isFetching}
+                    onClick={() => void togglePreference(preference)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 ${preference.isEnabled ? 'bg-[#f30100]' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${preference.isEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Table */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {columns.filter(col => visibleColumns.includes(col.id) || col.id === 'Actions').map((col) => (
-                  <TableHead key={col.id} className="text-sm font-medium">
-                    {col.label}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentNotifications.map((notification) => (
-                <TableRow key={notification.id}>
-                  {visibleColumns.includes('Module') && (
-                    <TableCell className="font-medium">{notification.module}</TableCell>
-                  )}
-                  {visibleColumns.includes('Subject') && (
-                    <TableCell className="text-muted-foreground">{notification.subject}</TableCell>
-                  )}
-                  {visibleColumns.includes('Status') && (
-                    <TableCell>
-                      <span
-                        className="px-2 py-1 rounded-full text-xs font-medium"
-                        style={{
-                          fontFamily: 'Poppins',
-                          ...getStatusBadgeStyle(notification.status)
-                        }}
-                      >
-                        {notification.status}
-                      </span>
-                    </TableCell>
-                  )}
-                  <TableCell className="text-right">
-                    <RowActionsMenu>
-                      {(close) => (
-                        <>
-                          <RowAction onClick={() => { close(); }}>
-                            <Eye className="w-4 h-4" />
-                            View
-                          </RowAction>
-                          <RowAction onClick={() => { close(); }}>
-                            <Edit className="w-4 h-4" />
-                            Edit
-                          </RowAction>
-                          <RowAction danger onClick={() => { close(); }}>
-                            <Trash2 className="w-4 h-4" />
-                            Delete
-                          </RowAction>
-                        </>
-                      )}
-                    </RowActionsMenu>
-                  </TableCell>
-                </TableRow>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          )}
+          {saving && <p className="mt-4 text-sm text-muted-foreground" role="status">Saving preference…</p>}
         </CardContent>
       </Card>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground" style={{ fontFamily: 'Poppins' }}>
-            Show
-          </span>
-          <select
-            value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setCurrentPage(1);
-            }}
-            className="px-2 py-1 text-sm border border-border rounded bg-card"
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
-          >
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-          </select>
-          <span className="text-sm text-muted-foreground" style={{ fontFamily: 'Poppins' }}>
-            entries per page
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button 
-            onClick={() => setCurrentPage(1)}
-            disabled={currentPage === 1}
-            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50" 
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
-          >
-            First
-          </button>
-          <button 
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50" 
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
-          >
-            Previous
-          </button>
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            const pageNum = i + 1;
-            return (
-              <button
-                key={pageNum}
-                onClick={() => setCurrentPage(pageNum)}
-                className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted"
-                style={{ 
-                  fontFamily: 'Poppins', 
-                  borderRadius: '6px', 
-                  borderColor: '#e3e3e3',
-                  backgroundColor: currentPage === pageNum ? '#f30100' : 'white',
-                  color: currentPage === pageNum ? 'white' : 'inherit'
-                }}
-              >
-                {pageNum}
-              </button>
-            );
-          })}
-          <button 
-            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50" 
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
-          >
-            Next
-          </button>
-          <button 
-            onClick={() => setCurrentPage(totalPages)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50" 
-            style={{ fontFamily: 'Poppins', borderRadius: '6px', borderColor: '#e3e3e3' }}
-          >
-            Last
-          </button>
-        </div>
-      </div>
     </div>
   );
 };
-
 export default EmailNotification;

@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import type { Theme } from '@/types';
+import { useAuth } from '@/lib/auth';
 
 interface PageLayoutProps {
   theme: Theme;
@@ -11,10 +12,12 @@ interface PageLayoutProps {
 
 const PageLayout = ({ theme, toggleTheme }: PageLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
-    // TODO: Implement logout logic
-    console.log('Logout clicked');
+    logout();
+    navigate('/login', { replace: true });
   };
 
   return (

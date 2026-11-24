@@ -8,7 +8,19 @@ const readStoredUser = (): User | null => {
   const storedUser = localStorage.getItem('user');
   if (!token || !storedUser) return null;
   try {
-    return JSON.parse(storedUser);
+    const parsed = JSON.parse(storedUser);
+    const name =
+      parsed.name ||
+      [parsed.firstName, parsed.lastName].filter(Boolean).join(" ") ||
+      parsed.email ||
+      "Estate Manager";
+    return {
+      id: parsed.id || "",
+      name,
+      email: parsed.email || "",
+      role: parsed.role ?? parsed.accountType ?? "",
+      avatar: parsed.avatar,
+    };
   } catch {
     return null;
   }

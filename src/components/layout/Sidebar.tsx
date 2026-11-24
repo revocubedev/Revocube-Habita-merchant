@@ -1,6 +1,7 @@
 import { NavLink, useLocation, useParams } from 'react-router-dom';
 import { LogOut, ChevronRight } from 'lucide-react';
 import { navItems, userProfile } from '@/lib/navigation';
+import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { estatePath } from '@/lib/estateRoutes';
@@ -14,6 +15,11 @@ interface SidebarProps {
 const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
   const location = useLocation();
   const { estateCode = '' } = useParams();
+  const { user } = useAuth();
+
+  const displayName = user?.name || userProfile.name;
+  const displayEmail = user?.email || userProfile.email;
+  const displayInitial = (displayName || displayEmail || 'U').charAt(0).toUpperCase();
 
   const isItemActive = (item: any, currentPath: string): boolean => {
     if (estatePath(estateCode, item.to) === currentPath) return true;
@@ -166,15 +172,16 @@ const Sidebar = ({ isOpen, onToggle, onLogout }: SidebarProps) => {
         <div className="p-3 border-t border-border">
           <div className="flex items-center gap-3 p-2 rounded-xl bg-muted">
             <div className="w-9 h-9 rounded-full bg-gradient-primary flex items-center justify-center text-primary-foreground font-semibold">
-              {userProfile.name.charAt(0)}
+              {displayInitial}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold truncate">{userProfile.name}</div>
+              <div className="text-xs font-semibold truncate">{displayName}</div>
               <div className="text-[10px] text-muted-foreground truncate">
-                {userProfile.email}
+                {displayEmail}
               </div>
             </div>
             <button
+              type="button"
               onClick={onLogout}
               className="w-8 h-8 rounded-lg hover:bg-background flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
               title="Sign out"

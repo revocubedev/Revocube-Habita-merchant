@@ -6,6 +6,7 @@ import {
   useGetReceivingAccounts,
   useGetReceivingBanks,
   useResolveBankAccount,
+  useRequestReceivingAccountOtp,
   ReceivingAccount,
 } from '@/api/api_controllers/receivingAccountController';
 
@@ -20,6 +21,9 @@ export const AddBankAccountModal = ({
   onCreated?: (acc: ReceivingAccount) => void;
 }) => {
   const { createAccount, isLoading } = useCreateReceivingAccount();
+  const { requestOtp, isLoading: requestingOtp } = useRequestReceivingAccountOtp();
+  const [otpDelivery, setOtpDelivery] = useState<{ email: string; expiresInMinutes: number } | null>(null);
+  const [otp, setOtp] = useState('');
   const [form, setForm] = useState({
     accountNumber: '',
     bankCode: '',
@@ -37,6 +41,8 @@ export const AddBankAccountModal = ({
     if (isOpen) {
       setForm({ accountNumber: '', bankCode: '' });
       setShouldResolve(false);
+      setOtpDelivery(null);
+      setOtp('');
     }
   }, [isOpen]);
 
@@ -49,9 +55,17 @@ export const AddBankAccountModal = ({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valid || !confirmed) return;
+    if (isLoading || requestingOtp) return;
     try {
-      const res = await createAccount(form);
+      if (!otpDelivery) {
+        const bank = banks.find((item) => item.code === form.bankCode);
+        if (!valid || !confirmed || !bank) return;
+        const response = await requestOtp({ accountNumber: form.accountNumber, bankName: bank.name });
+        setOtpDelivery(response.data);
+        return;
+      }
+      if (!/^\d{6}$/.test(otp)) return;
+      const res = await createAccount({ otp });
       onCreated?.(res?.data);
       onClose();
     } catch {
@@ -62,6 +76,27 @@ export const AddBankAccountModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Add Bank Account Details" size="md">
       <form onSubmit={submit} className="space-y-5" autoComplete="off">
+        {otpDelivery ? (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Enter the 6-digit code sent to {otpDelivery.email}. It expires in {otpDelivery.expiresInMinutes} minutes.
+            </p>
+            <Field label="Verification Code">
+              <input
+                className={inputCls}
+                placeholder="Enter 6-digit code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                required
+                autoFocus
+              />
+            </Field>
+          </>
+        ) : (
+          <>
         <Field label="Account Number">
           <input
             className={inputCls}
@@ -109,14 +144,16 @@ export const AddBankAccountModal = ({
         {confirmed && (
           <p className="text-sm text-foreground">Account name: {resolvedAccount.accountName}</p>
         )}
+          </>
+        )}
         <div className="flex justify-end pt-4">
           <button
             type="submit"
-            disabled={!valid || !confirmed || isLoading}
+            disabled={isLoading || requestingOtp || (otpDelivery ? !/^\d{6}$/.test(otp) : !valid || !confirmed)}
             className="px-8 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50"
             style={{ backgroundColor: '#f30100' }}
           >
-            {isLoading ? 'Saving...' : 'Save'}
+            {requestingOtp ? 'Sending code...' : isLoading ? 'Saving...' : otpDelivery ? 'Verify & Save' : 'Next'}
           </button>
         </div>
       </form>

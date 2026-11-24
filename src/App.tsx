@@ -7,6 +7,7 @@ import PageLayout from '@/components/layout/PageLayout';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import VerifyEmail from '@/pages/VerifyEmail';
+import TwoFactorLogin from '@/pages/TwoFactorLogin';
 import Dashboard from '@/pages/Dashboard';
 import Members from '@/pages/Members';
 import JoinRequests from '@/components/members/JoinRequests';
@@ -119,6 +120,7 @@ function AppContent() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/2fa-verify" element={<TwoFactorLogin />} />
       <Route path="/" element={<HomeRedirect />} />
       <Route
         path="/:estateCode"
