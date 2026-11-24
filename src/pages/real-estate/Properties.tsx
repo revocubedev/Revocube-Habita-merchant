@@ -649,7 +649,7 @@ const Properties = () => {
   } | null>(null);
   const [deleting, setDeleting] = useState<Property | null>(null);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
-  const code = localStorage.getItem("code")?.trim() ?? "";
+  const code = localStorage.getItem("est_code")?.trim() ?? "";
   const query = useGetProperties({
     page: currentPage,
     perPage: pageSize,

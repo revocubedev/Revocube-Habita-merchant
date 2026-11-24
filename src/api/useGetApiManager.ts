@@ -10,6 +10,7 @@ interface Props<TData = any> {
   isCode?: boolean;
   params?: any;
   enabled?: boolean;
+  retry?: boolean | number;
   select?: (response: any) => TData;
 }
 
@@ -20,6 +21,7 @@ export default function useGetApiManager<TData = any>({
   isCode = false,
   params,
   enabled = true,
+  retry,
   select,
 }: Props<TData>) {
   const axiosInstance = isAuth ? AxiosWithToken : Axios;
@@ -29,7 +31,8 @@ export default function useGetApiManager<TData = any>({
     queryKey: isCode ? [estateCode, ...queryKey] : queryKey,
     queryFn: async () => {
       const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-      if (isCode && !estateCode) throw new Error("Estate code is missing from the URL");
+      if (isCode && !estateCode)
+        throw new Error("Estate code is missing from the URL");
       const url = isCode ? `/${encodeURIComponent(estateCode!)}${path}` : path;
       try {
         const response = await axiosInstance.get(url, { params });
@@ -43,5 +46,6 @@ export default function useGetApiManager<TData = any>({
     select,
     enabled: enabled && (!isCode || !!estateCode),
     refetchOnWindowFocus: false,
+    ...(retry !== undefined ? { retry } : {}),
   });
 }

@@ -39,6 +39,7 @@ import {
 } from "@/api/api_controllers/repairsController";
 import CreateRepairRequestModal from "@/components/portal/AddRepairRequestModal";
 import { useGetMembers } from "@/api/api_controllers/members";
+import { extractTypes, useGetIssueTypes } from "@/api/api_controllers/types";
 
 const DEFAULT_COLUMNS = [
   "Property",
@@ -172,6 +173,14 @@ const Maintenance = () => {
     [membersResponse]
   );
 
+  const { data: issueTypesResponse, isLoading: isLoadingIssueTypes } =
+    useGetIssueTypes();
+
+  const issueTypes = useMemo(
+    () => extractTypes(issueTypesResponse),
+    [issueTypesResponse]
+  );
+
   const properties = propertiesResponse ?? [];
   const units = unitsResponse ?? [];
   const maintainers = maintainersResponse ?? [];
@@ -180,7 +189,8 @@ const Maintenance = () => {
     isLoadingMembers ||
     isLoadingProperties ||
     isLoadingUnits ||
-    isLoadingMaintainers;
+    isLoadingMaintainers ||
+    isLoadingIssueTypes;
 
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -815,7 +825,10 @@ const Maintenance = () => {
                       rel="noopener noreferrer"
                       className="text-[#f30100] underline"
                     ></a> */}
-                    <img src={repairDetails.issueDocument} alt="Issue Document" />
+                    <img
+                      src={repairDetails.issueDocument}
+                      alt="Issue Document"
+                    />
                   </div>
                 )}
 
@@ -850,6 +863,7 @@ const Maintenance = () => {
           properties={properties}
           units={units}
           maintainers={maintainers}
+          issueTypes={issueTypes}
           isLoadingOptions={isLoadingRepairOptions}
         />
       )}

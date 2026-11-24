@@ -44,12 +44,31 @@ const InitiatePayment = () => {
 
   const handlePay = async () => {
     if (!estateId || busy) return;
+
     try {
-      const result = await initializePayment({ estateId, billingCycle: cycle });
-      setRedirecting(true); // keeps the button disabled while the browser leaves
+      const result = await initializePayment({
+        estateId,
+        billingCycle: cycle,
+        callbackUrl: `${window.location.origin}/verify-payment`,
+      });
+
+      if (!result?.authorizationUrl) {
+        throw new Error("Payment authorization URL was not returned.");
+      }
+
+      try {
+        if (result.reference) {
+          sessionStorage.setItem("pendingPaymentReference", result.reference);
+        }
+      } catch {
+        // Storage unavailable; continue using the authorization URL.
+      }
+
+      setRedirecting(true);
       window.location.assign(result.authorizationUrl);
-    } catch {
-      // errors are already toasted
+    } catch (error) {
+      console.error("Payment initialization failed:", error);
+      setRedirecting(false);
     }
   };
 
