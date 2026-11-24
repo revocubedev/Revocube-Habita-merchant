@@ -34,6 +34,7 @@ import { estatePath, getDefaultEstateCode, getStoredEstateCodes } from '@/lib/es
 import LoggedHistory from './pages/management/LoggedHistory';
 import AdminLogin from './pages/AdminLogin';
 import InitiatePayment from './components/finance/IntiatePayment';
+import VerifyPayment from './pages/finance/VerifyPayment';
 
 // Query Client Configuration
 const queryClient = new QueryClient({
@@ -160,6 +161,7 @@ function AppContent() {
         <Route path="email-notification" element={<EmailNotification />} />
         <Route path="settings" element={<Settings />} />
         <Route path="payment" element={<InitiatePayment />} />
+        <Route path="payments/verify" element={<VerifyPayment />} />
         <Route path="*" element={<EstateFallback />} />
       </Route>
     </Routes>

@@ -8,6 +8,7 @@ const TABS: { category: TypeCategory; label: string }[] = [
   { category: "EXPENSE_ISSUE_TYPE", label: "Expense" },
   { category: "PROPERTY_TYPE", label: "Property" },
   { category: "INVOICE_TYPE", label: "Invoice" },
+  { category: "REPAIR_ISSUE_TYPE", label: "Issue" },
 ];
 
 const Types = () => {

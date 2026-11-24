@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { X, Upload, Loader2 } from "lucide-react";
+import type { TypeOption } from "@/api/api_controllers/types";
 
 export interface RepairOption {
   id: string;
@@ -21,9 +22,16 @@ interface CreateRepairRequestModalProps {
   properties: RepairOption[];
   units: RepairUnitOption[];
   maintainers: RepairOption[];
+  // issueTypes: RepairIssueTypeOption[];
+  isLoadingIssueTypes?: boolean;
+  issueTypes: TypeOption[];
 }
 
-const ISSUE_TYPES = ["REPAIR", "OTHER"];
+export interface RepairIssueTypeOption {
+  id: string;
+  value: string;
+  label: string;
+}
 
 const getToday = () => {
   const date = new Date();
@@ -42,9 +50,11 @@ const CreateRepairRequestModal = ({
   properties,
   units,
   maintainers,
+  issueTypes,
+  isLoadingIssueTypes = false,
 }: CreateRepairRequestModalProps) => {
   const [requestDate, setRequestDate] = useState(getToday());
-  const [issueType, setIssueType] = useState("REPAIR");
+  const [repairIssueTypeId, setRepairIssueTypeId] = useState("");
   const [memberId, setMemberId] = useState("");
   const [propertyId, setPropertyId] = useState("");
   const [unitId, setUnitId] = useState("");
@@ -62,10 +72,15 @@ const CreateRepairRequestModal = ({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    if (!repairIssueTypeId) {
+      console.error("Please select a repair issue type");
+      return;
+    }
+
     const formData = new FormData();
 
     formData.append("requestDate", requestDate);
-    formData.append("issueType", issueType);
+    formData.append("repairIssueTypeId", repairIssueTypeId);
     formData.append("memberId", memberId);
     formData.append("propertyId", propertyId);
     formData.append("unitId", unitId);
@@ -76,8 +91,24 @@ const CreateRepairRequestModal = ({
       formData.append("issueDocument", issueDocument);
     }
 
+    console.log("Repair request payload:");
+
+    for (const [key, value] of formData.entries()) {
+      console.log(`${key}:`, value);
+    }
+
     await onSubmit(formData);
   };
+
+  useEffect(() => {
+    if (issueTypes.length === 0) return;
+
+    setRepairIssueTypeId((current) =>
+      issueTypes.some((type) => type.id === current)
+        ? current
+        : issueTypes[0].id
+    );
+  }, [issueTypes]);
 
   const inputClass =
     "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#f30100] focus:ring-1 focus:ring-[#f30100] disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400";
@@ -127,16 +158,23 @@ const CreateRepairRequestModal = ({
             {/* Issue Type */}
             <div>
               <label className={labelClass}>Issue Type *</label>
+
               <select
-                value={issueType}
-                onChange={(e) => setIssueType(e.target.value)}
+                value={repairIssueTypeId}
+                onChange={(e) => setRepairIssueTypeId(e.target.value)}
                 className={inputClass}
                 required
-                disabled={isSubmitting}
+                disabled={
+                  isLoadingIssueTypes || isSubmitting || issueTypes.length === 0
+                }
               >
-                {ISSUE_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type.replaceAll("_", " ")}
+                <option value="" disabled>
+                  Select issue type
+                </option>
+
+                {issueTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.label}
                   </option>
                 ))}
               </select>
@@ -327,7 +365,12 @@ const CreateRepairRequestModal = ({
 
             <button
               type="submit"
-              disabled={isSubmitting || isLoadingOptions}
+              disabled={
+                isSubmitting ||
+                isLoadingOptions ||
+                isLoadingIssueTypes ||
+                issueTypes.length === 0
+              }
               className="flex items-center gap-2 rounded-lg bg-[#f30100] px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting && <Loader2 size={16} className="animate-spin" />}

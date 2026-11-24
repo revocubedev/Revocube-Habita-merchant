@@ -69,9 +69,9 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
       {/* Right side - User profile */}
       <div className="flex items-center gap-3">
         {/* Settings icon */}
-        <button className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground transition-colors">
+        <a href="/settings" className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground transition-colors">
           <Settings className="w-4 h-4" />
-        </button>
+        </a>
 
         {/* User profile section */}
         {user && (

@@ -6,6 +6,7 @@ export const TYPE_CATEGORIES = [
   "PROPERTY_TYPE",
   "MAINTAINER_TYPE",
   "INVOICE_TYPE",
+  "REPAIR_ISSUE_TYPE",
 ] as const;
 
 export type TypeCategory = (typeof TYPE_CATEGORIES)[number];
@@ -63,6 +64,8 @@ export const useGetMaintainerTypes = (enabled = true) =>
   useGetTypesByCategory("MAINTAINER_TYPE", { enabled });
 export const useGetInvoiceTypes = (enabled = true) =>
   useGetTypesByCategory("INVOICE_TYPE", { enabled });
+export const useGetIssueTypes = (enabled = true) =>
+  useGetTypesByCategory("REPAIR_ISSUE_TYPE", { enabled });
 
 
 export const useCreateType = () => {
