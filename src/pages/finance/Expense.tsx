@@ -1,25 +1,36 @@
 import {
-  useEffect,
   useRef,
-  useState,
   type FormEvent,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
-import { ChevronDown, Plus, Search } from "lucide-react";
-import * as XLSX from "xlsx";
-import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
-import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
-import { useGetExpenseTypes, extractTypes } from "@/api/api_controllers/types";
 import {
   useCreateExpense,
   useUpdateExpense,
+  type Expense ,
+  type ExpenseInput,
+} from "@/api/api_controllers/expenses";
+import SearchableSelect, { SelectOption } from "@/components/ui/SearchableSelect";
+import { useGetProperties } from "@/api/api_controllers/property";
+import { useGetUnits } from "@/api/api_controllers/unitController";
+
+
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { ChevronDown, Plus, Search } from "lucide-react";
+import * as XLSX from "xlsx";
+
+import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
+
+import Button from "@/components/ui/Button";
+
+import { extractTypes, useGetExpenseTypes } from "@/api/api_controllers/types";
+
+import {
   useDeleteExpense,
   useGetExpensesCall,
   type Expense as ApiExpense,
-  type ExpenseInput,
 } from "@/api/api_controllers/expenses";
 
 type Mode = "create" | "edit" | "view";
@@ -110,17 +121,43 @@ function idOf(direct: unknown, nested: unknown): string {
   return "";
 }
 
-type NamedOption = { id: string; name: string };
+type UnitRow = { id: string; name?: string; propertyId?: string };
 
-function uniqueOptions(items: NamedOption[]): NamedOption[] {
-  const seen = new Map<string, NamedOption>();
+// Handles [..], { data: [..] }, { data: { units: [..] } }, { data: { data: [..] } }
+function extractUnits(payload: any): UnitRow[] {
+  const d = payload?.data;
+  const list: any[] = Array.isArray(payload)
+    ? payload
+    : Array.isArray(d)
+    ? d
+    : Array.isArray(d?.units)
+    ? d.units
+    : Array.isArray(d?.items)
+    ? d.items
+    : Array.isArray(d?.data)
+    ? d.data
+    : [];
 
-  for (const item of items) {
-    if (item.id && !seen.has(item.id)) seen.set(item.id, item);
-  }
-
-  return [...seen.values()];
+  return list
+    .filter((u) => u && typeof u.id === "string")
+    .map((u) => ({
+      id: u.id,
+      name: u.name ?? u.unitNumber,
+      propertyId: u.propertyId ?? u.property?.id,
+    }));
 }
+
+// Keeps the expense's saved property/unit selectable even if it isn't in the fetched list
+function withCurrent(
+  options: SelectOption[],
+  id: string,
+  label: string
+): SelectOption[] {
+  return id && label && !options.some((o) => o.value === id)
+    ? [{ value: id, label }, ...options]
+    : options;
+}
+
 
 function typeLabel(
   expense: ApiExpense,
@@ -405,7 +442,6 @@ function ExpenseModal({
   mode,
   expense,
   onClose,
-  expenses = [],
 }: {
   mode: Mode;
   expense?: ApiExpense;
@@ -453,22 +489,32 @@ function ExpenseModal({
         ? expense.issueType.id ?? ""
         : "");
 
-  const allExpenses = expense ? [expense, ...expenses] : expenses;
+  // Properties and units come from their own endpoints
+  const propertiesQuery = useGetProperties({
+    page: 1,
+    perPage: 100,
+    enabled: !readOnly,
+  });
+  const unitsQuery = useGetUnits({ page: 1, perPage: 100, enabled: !readOnly });
 
-  const properties = uniqueOptions(
-    allExpenses.map((e) => ({
-      id: idOf(e.propertyId, e.property),
-      name: labelOf(e.property),
-    }))
+  const currentPropertyId = idOf(expense?.propertyId, expense?.property);
+  const currentUnitId = idOf(expense?.unitId, expense?.unit);
+
+  const propertyOptions: SelectOption[] = withCurrent(
+    (propertiesQuery.data?.data ?? []).map((p) => ({
+      value: p.id,
+      label: p.name || "Unnamed property",
+    })),
+    currentPropertyId,
+    labelOf(expense?.property)
   );
 
-  const units = uniqueOptions(
-    allExpenses
-      .filter((e) => idOf(e.propertyId, e.property) === form.propertyId)
-      .map((e) => ({
-        id: idOf(e.unitId, e.unit),
-        name: labelOf(e.unit),
-      }))
+  const unitOptions: SelectOption[] = withCurrent(
+    extractUnits(unitsQuery.data)
+      .filter((u) => u.propertyId === form.propertyId)
+      .map((u) => ({ value: u.id, label: u.name || "Unnamed unit" })),
+    form.propertyId === currentPropertyId ? currentUnitId : "",
+    labelOf(expense?.unit)
   );
 
   function change<K extends keyof ExpenseForm>(key: K, value: ExpenseForm[K]) {
@@ -636,7 +682,9 @@ function ExpenseModal({
                     className={`w-full appearance-none rounded-lg border pr-12 ${controlClass}`}
                   >
                     <option value="" disabled>
-                      {typesQuery.isLoading ? "Loading types..." : "Select type"}
+                      {typesQuery.isLoading
+                        ? "Loading types..."
+                        : "Select type"}
                     </option>
 
                     {form.issueType &&
@@ -656,49 +704,50 @@ function ExpenseModal({
               </Field>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <Field label="Property">
-                <div className="relative">
-                  <select
-                    value={form.propertyId}
-                    onChange={(event) => {
-                      change("propertyId", event.target.value);
-                      change("unitId", "");
-                    }}
-                    className={`w-full appearance-none rounded-lg border pr-12 ${controlClass}`}
-                  >
-                    <option value="">Select property</option>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className="block space-y-1">
+                <span>Property</span>
+                <SearchableSelect
+                  value={form.propertyId}
+                  onChange={(v) => {
+                    change("propertyId", v);
+                    change("unitId", "");
+                  }}
+                  options={propertyOptions}
+                  placeholder="Select property"
+                  searchPlaceholder="Search properties..."
+                  emptyText="No properties found"
+                  loading={propertiesQuery.isLoading}
+                  clearable
+                  className={inputClass}
+                />
+                {propertiesQuery.isError && (
+                  <p className="text-xs text-red-600">
+                    Could not load properties.
+                  </p>
+                )}
+              </label>
 
-                    {properties.map((property) => (
-                      <option key={property.id} value={property.id}>
-                        {property.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  {selectArrow}
-                </div>
-              </Field>
-
-              <Field label="Unit">
-                <div className="relative">
-                  <select
-                    value={form.unitId}
-                    onChange={(event) => change("unitId", event.target.value)}
-                    className={`w-full appearance-none rounded-lg border pr-12 ${controlClass}`}
-                  >
-                    <option value="">Select unit</option>
-
-                    {units.map((unit) => (
-                      <option key={unit.id} value={unit.id}>
-                        {unit.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  {selectArrow}
-                </div>
-              </Field>
+              <label className="block space-y-1">
+                <span>Unit</span>
+                <SearchableSelect
+                  value={form.unitId}
+                  onChange={(v) => change("unitId", v)}
+                  options={unitOptions}
+                  placeholder={
+                    form.propertyId ? "Select unit" : "Select a property first"
+                  }
+                  searchPlaceholder="Search units..."
+                  emptyText="No units for this property"
+                  loading={unitsQuery.isLoading}
+                  disabled={!form.propertyId}
+                  clearable
+                  className={inputClass}
+                />
+                {unitsQuery.isError && (
+                  <p className="text-xs text-red-600">Could not load units.</p>
+                )}
+              </label>
             </div>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -855,8 +904,8 @@ function ExpenseModal({
                   {typesQuery.isLoading
                     ? "Loading types..."
                     : typesQuery.isError
-                      ? "Unable to load types"
-                      : "Select an issue type"}
+                    ? "Unable to load types"
+                    : "Select an issue type"}
                 </option>
 
                 {form.issueType &&
@@ -886,9 +935,9 @@ function ExpenseModal({
                 >
                   <option value="">Select property</option>
 
-                  {properties.map((property) => (
-                    <option key={property.id} value={property.id}>
-                      {property.name}
+                  {propertyOptions.map((property) => (
+                    <option key={property.value} value={property.value}>
+                      {property.label}
                     </option>
                   ))}
                 </select>
@@ -904,9 +953,9 @@ function ExpenseModal({
                 >
                   <option value="">Select unit</option>
 
-                  {units.map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.name}
+                  {unitOptions.map((unit) => (
+                    <option key={unit.value} value={unit.value}>
+                      {unit.label}
                     </option>
                   ))}
                 </select>
