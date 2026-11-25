@@ -1,4 +1,4 @@
-import { Mail, Phone, CalendarDays, Wrench, UserRound, X } from "lucide-react";
+import { Mail, Phone, CalendarDays, Wrench, UserRound } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import type { Maintainer } from "@/api/api_controllers/maintainerController";
 
@@ -81,7 +81,7 @@ const MaintainerViewModal = ({
           <h3 className="text-lg font-semibold text-gray-800">{fullName}</h3>
 
           <span className="mt-2 px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600">
-            {maintainer.maintainerTypeNew?.value?.replaceAll("_", " ") ||
+            {maintainer.maintainerTypeNew?.value?.replace(/_/g, " ") ||
               "Maintainer"}
           </span>
         </div>
@@ -108,7 +108,7 @@ const MaintainerViewModal = ({
             <DetailItem
               icon={Wrench}
               label="Maintainer Type"
-              value={maintainer.maintainerTypeNew?.value?.replaceAll("_", " ")}
+              value={maintainer.maintainerTypeNew?.value?.replace(/_/g, " ")}
             />
           </div>
         </div>

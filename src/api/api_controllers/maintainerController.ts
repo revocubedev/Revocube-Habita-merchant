@@ -122,7 +122,10 @@ export const useDeleteMaintainer = (id?: string) => {
     method: "DELETE",
     isAuth: true,
     isCode: true,
+    successMessage: "Maintainer deleted successfully",
   });
+
   const deleteMaintainer = () => callApi();
+
   return { deleteMaintainer, isLoading, error, isSuccess };
 };

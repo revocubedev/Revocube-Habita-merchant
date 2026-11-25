@@ -25,6 +25,7 @@ export interface Member {
   email?: string;
   phone?: string;
   streetAddress?: string;
+  joinedAt?: string;
   propertyId?: string;
   unitId?: string;
   status?: string;

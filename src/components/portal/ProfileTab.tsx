@@ -24,7 +24,7 @@ const inputStyle = {
 };
 const labelStyle = { fontFamily: "Poppins", color: "#4c4c4c" };
 
-const ProfileForm = ({ id, profile }: { id: string; profile: Profile }) => {
+const ProfileForm = ({ profile }: { id: string; profile: Profile }) => {
   const [firstName, setFirstName] = useState(profile.firstName ?? "");
   const [lastName, setLastName] = useState(profile.lastName ?? "");
   const [email, setEmail] = useState(profile.email ?? "");

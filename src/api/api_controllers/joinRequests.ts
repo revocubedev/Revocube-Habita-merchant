@@ -75,3 +75,18 @@ export const useMoveOutResident = (requestId: string) => {
 
   return { moveOut: () => callApi(), isLoading };
 };
+
+export const useRejectEstateJoinRequest = (requestId: string) => {
+  const { callApi, isLoading } = useApiManager({
+    endpoint: `join/${encodeURIComponent(requestId)}/reject`,
+    method: "POST",
+    isAuth: true,
+    isCode: true,
+    queryKey: [QUERY_KEY, "get_members"],
+  });
+
+  return {
+    reject: () => callApi(),
+    isLoading,
+  };
+};

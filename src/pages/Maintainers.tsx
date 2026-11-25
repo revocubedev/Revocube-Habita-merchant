@@ -1,92 +1,149 @@
-import { useState, useEffect } from 'react';
-import { Search, FileSpreadsheet, ChevronDown, Edit, Trash2, Eye } from 'lucide-react';
-import Card from '@/components/ui/Card';
-import { CardContent } from '@/components/ui/Card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
+import { useState, useEffect } from "react";
+import {
+  Search,
+  FileSpreadsheet,
+  ChevronDown,
+  Edit,
+  Trash2,
+  Eye,
+} from "lucide-react";
+
+import Card from "@/components/ui/Card";
+import { CardContent } from "@/components/ui/Card";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/Table";
+
+import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
+
 import {
   useGetMaintainers,
   useDeleteMaintainer,
   type Maintainer,
-} from '@/api/api_controllers/maintainerController';
-import MaintainerFormModal from '@/components/maintainers/MaintainerFormModal';
-import DeleteModal from '@/components/ui/DeleteModal';
-import MaintainerViewModal from '@/components/portal/Maintainer';
+} from "@/api/api_controllers/maintainerController";
 
-const formatDate = (v?: string) => {
-  if (!v) return '';
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? v : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-};
+import MaintainerFormModal from "@/components/maintainers/MaintainerFormModal";
+import DeleteModal from "@/components/ui/DeleteModal";
+import MaintainerViewModal from "@/components/portal/Maintainer";
 
-const DeleteMaintainerButton = ({ id, name }: { id: string; name: string }) => {
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+const formatDate = (value?: string) => {
+  if (!value) return "";
 
-  return (
-    <>
-      <RowAction danger onClick={() => setIsDeleteOpen(true)}>
-        <Trash2 className="w-4 h-4" />
-        Delete
-      </RowAction>
+  const date = new Date(value);
 
-      <DeleteModal
-        isOpen={isDeleteOpen}
-        onClose={() => setIsDeleteOpen(false)}
-        endpoint={`maintainers/${id}`}
-        queryKey={["get_maintainers"]}
-        itemName={name}
-        entity="Maintainer"
-        successMessage="Maintainer deleted successfully"
-        isCode
-      />
-    </>
-  );
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
 };
 
 const Maintainers = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [showColumnMenu, setShowColumnMenu] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState(['Maintainer', 'Email Address', 'User', 'Creation Date', 'Type', 'Actions']);
+
+  const [visibleColumns, setVisibleColumns] = useState([
+    "Maintainer",
+    "Email Address",
+    "User",
+    "Creation Date",
+    "Type",
+    "Actions",
+  ]);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [viewing, setViewing] = useState<Maintainer | null>(null);
 
+  const [viewing, setViewing] = useState<Maintainer | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Maintainer | null>(null);
 
-  const { data, isLoading, isError, error } = useGetMaintainers({ page: currentPage, perPage: pageSize });
-  const maintainers: Maintainer[] = Array.isArray(data?.data) ? data.data : [];
-  const meta = data?.meta;
+  // Delete modal state
+  const [deleteTarget, setDeleteTarget] = useState<Maintainer | null>(null);
 
-  const q = searchQuery.toLowerCase();
-  const currentMaintainers = maintainers.filter((m) =>
-    `${m.firstName} ${m.lastName}`.toLowerCase().includes(q) ||
-    m.email?.toLowerCase().includes(q) ||
-    m.phoneNumber?.includes(q)
+  // Dedicated delete hook
+  const { deleteMaintainer, isLoading: isDeleting } = useDeleteMaintainer(
+    deleteTarget?.id
   );
 
+  const { data, isLoading, isError, error } = useGetMaintainers({
+    page: currentPage,
+    perPage: pageSize,
+  });
+
+  const maintainers: Maintainer[] = Array.isArray(data?.data) ? data.data : [];
+
+  const meta = data?.meta;
+
   const columns = [
-    { id: 'Maintainer', label: 'Maintainer' },
-    { id: 'Email Address', label: 'Email Address' },
-    { id: 'User', label: 'Phone Number' },
-    { id: 'Creation Date', label: 'Creation Date' },
-    { id: 'Type', label: 'Type' },
-    { id: 'Actions', label: 'Actions' },
+    { id: "Maintainer", label: "Maintainer" },
+    { id: "Email Address", label: "Email Address" },
+    { id: "User", label: "Phone Number" },
+    { id: "Creation Date", label: "Creation Date" },
+    { id: "Type", label: "Type" },
+    { id: "Actions", label: "Actions" },
   ];
 
+  const filteredMaintainers = maintainers.filter((maintainer) => {
+    const query = searchQuery.toLowerCase();
+
+    return (
+      `${maintainer.firstName} ${maintainer.lastName}`
+        .toLowerCase()
+        .includes(query) ||
+      maintainer.email?.toLowerCase().includes(query) ||
+      maintainer.phoneNumber?.includes(query)
+    );
+  });
+
   const totalPages = Math.max(1, meta?.totalPages ?? 1);
+
+  const visibleColumnCount = columns.filter((column) =>
+    visibleColumns.includes(column.id)
+  ).length;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.column-menu-container')) {
+
+      if (!target.closest(".column-menu-container")) {
         setShowColumnMenu(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
+    try {
+      await deleteMaintainer();
+      setDeleteTarget(null);
+    } catch {
+      // useApiManager handles the error toast.
+      // Keep the modal open if deletion fails.
+    }
+  };
+
+  const toggleColumn = (columnId: string, checked: boolean) => {
+    setVisibleColumns((previous) =>
+      checked
+        ? [...previous, columnId]
+        : previous.filter((column) => column !== columnId)
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -94,11 +151,17 @@ const Maintainers = () => {
       <div className="flex items-center justify-between">
         <h2
           className="text-[16px] font-display font-medium text-foreground"
-          style={{ fontFamily: "Poppins", fontWeight: 500, color: "#4c4c4c" }}
+          style={{
+            fontFamily: "Poppins",
+            fontWeight: 500,
+            color: "#4c4c4c",
+          }}
         >
           Maintainers List
         </h2>
+
         <button
+          type="button"
           onClick={() => {
             setEditing(null);
             setModalOpen(true);
@@ -119,19 +182,25 @@ const Maintainers = () => {
       <div className="flex items-center gap-3">
         <div className="flex-1 max-w-sm relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+
           <input
+            type="text"
             placeholder="Search by name..."
             className="w-full pl-9 pr-3 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-brand-text/20 transition-colors"
-            style={{ fontFamily: "Poppins", borderColor: "#e3e3e3" }}
+            style={{
+              fontFamily: "Poppins",
+              borderColor: "#e3e3e3",
+            }}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(event) => setSearchQuery(event.target.value)}
           />
         </div>
 
-        {/* Column Visibility Dropdown */}
+        {/* Column Visibility */}
         <div className="relative column-menu-container">
           <button
-            onClick={() => setShowColumnMenu(!showColumnMenu)}
+            type="button"
+            onClick={() => setShowColumnMenu((previous) => !previous)}
             className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-card hover:bg-muted transition-colors"
             style={{
               fontFamily: "Poppins",
@@ -143,33 +212,31 @@ const Maintainers = () => {
             Column Visibility
             <ChevronDown className="w-4 h-4" />
           </button>
+
           {showColumnMenu && (
             <div
               className="absolute top-full left-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-lg p-2 z-10"
-              style={{ borderColor: "#e3e3e3", borderRadius: "8px" }}
+              style={{
+                borderColor: "#e3e3e3",
+                borderRadius: "8px",
+              }}
             >
-              {columns.map((col) => (
+              {columns.map((column) => (
                 <label
-                  key={col.id}
+                  key={column.id}
                   className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-muted rounded"
                   style={{ fontFamily: "Poppins" }}
                 >
                   <input
                     type="checkbox"
-                    checked={visibleColumns.includes(col.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setVisibleColumns([...visibleColumns, col.id]);
-                      } else {
-                        setVisibleColumns(
-                          visibleColumns.filter((c) => c !== col.id)
-                        );
-                      }
-                    }}
+                    checked={visibleColumns.includes(column.id)}
+                    onChange={(event) =>
+                      toggleColumn(column.id, event.target.checked)
+                    }
                     className="rounded border-gray-300"
                     style={{ accentColor: "#f30100" }}
                   />
-                  {col.label}
+                  {column.label}
                 </label>
               ))}
             </div>
@@ -190,57 +257,66 @@ const Maintainers = () => {
             <TableHeader>
               <TableRow>
                 {columns
-                  .filter((col) => visibleColumns.includes(col.id))
-                  .map((col) => (
-                    <TableHead key={col.id} className="text-sm font-medium">
-                      {col.label}
+                  .filter((column) => visibleColumns.includes(column.id))
+                  .map((column) => (
+                    <TableHead key={column.id} className="text-sm font-medium">
+                      {column.label}
                     </TableHead>
                   ))}
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {(isLoading || isError || currentMaintainers.length === 0) && (
+              {(isLoading || isError || filteredMaintainers.length === 0) && (
                 <TableRow>
                   <TableCell
-                    colSpan={visibleColumns.length}
+                    colSpan={Math.max(visibleColumnCount, 1)}
                     className="text-center text-muted-foreground py-8"
                   >
                     {isLoading
                       ? "Loading maintainers..."
                       : isError
-                      ? (error as Error)?.message
+                      ? (error as Error)?.message ||
+                        "Failed to load maintainers"
                       : "No maintainers found"}
                   </TableCell>
                 </TableRow>
               )}
+
               {!isLoading &&
-                currentMaintainers.map((maintainer) => (
+                !isError &&
+                filteredMaintainers.map((maintainer) => (
                   <TableRow key={maintainer.id}>
                     {visibleColumns.includes("Maintainer") && (
                       <TableCell className="font-medium">
                         {maintainer.firstName} {maintainer.lastName}
                       </TableCell>
                     )}
+
                     {visibleColumns.includes("Email Address") && (
                       <TableCell className="text-muted-foreground">
                         {maintainer.email}
                       </TableCell>
                     )}
+
                     {visibleColumns.includes("User") && (
                       <TableCell className="text-muted-foreground">
                         {maintainer.phoneNumber}
                       </TableCell>
                     )}
+
                     {visibleColumns.includes("Creation Date") && (
                       <TableCell className="text-muted-foreground">
                         {formatDate(maintainer.createdAt)}
                       </TableCell>
                     )}
+
                     {visibleColumns.includes("Type") && (
                       <TableCell className="text-muted-foreground">
-                        {maintainer.maintainerTypeNew?.value}
+                        {maintainer.maintainerTypeNew?.value || "-"}
                       </TableCell>
                     )}
+
                     {visibleColumns.includes("Actions") && (
                       <TableCell className="text-left">
                         <RowActionsMenu
@@ -248,7 +324,6 @@ const Maintainers = () => {
                         >
                           {(close) => (
                             <>
-                              {/* View */}
                               <RowAction
                                 onClick={() => {
                                   setViewing(maintainer);
@@ -259,7 +334,6 @@ const Maintainers = () => {
                                 View Details
                               </RowAction>
 
-                              {/* Edit */}
                               <RowAction
                                 onClick={() => {
                                   setEditing(maintainer);
@@ -271,11 +345,16 @@ const Maintainers = () => {
                                 Edit
                               </RowAction>
 
-                              {/* Delete */}
-                              <DeleteMaintainerButton
-                                id={maintainer.id}
-                                name={`${maintainer.firstName} ${maintainer.lastName}`}
-                              />
+                              <RowAction
+                                danger
+                                onClick={() => {
+                                  setDeleteTarget(maintainer);
+                                  close();
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </RowAction>
                             </>
                           )}
                         </RowActionsMenu>
@@ -297,10 +376,11 @@ const Maintainers = () => {
           >
             Show
           </span>
+
           <select
             value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
               setCurrentPage(1);
             }}
             className="px-2 py-1 text-sm border border-border rounded bg-card"
@@ -315,6 +395,7 @@ const Maintainers = () => {
             <option value={25}>25</option>
             <option value={50}>50</option>
           </select>
+
           <span
             className="text-sm text-muted-foreground"
             style={{ fontFamily: "Poppins" }}
@@ -322,90 +403,111 @@ const Maintainers = () => {
             entries per page
           </span>
         </div>
+
         <div className="flex items-center gap-1">
           <button
+            type="button"
             onClick={() => setCurrentPage(1)}
             disabled={currentPage === 1}
             className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50"
-            style={{
-              fontFamily: "Poppins",
-              borderRadius: "6px",
-              borderColor: "#e3e3e3",
-            }}
           >
             First
           </button>
+
           <button
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            type="button"
+            onClick={() =>
+              setCurrentPage((previous) => Math.max(1, previous - 1))
+            }
             disabled={currentPage === 1}
             className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50"
-            style={{
-              fontFamily: "Poppins",
-              borderRadius: "6px",
-              borderColor: "#e3e3e3",
-            }}
           >
             Previous
           </button>
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            const pageNum = i + 1;
+
+          {Array.from({ length: Math.min(5, totalPages) }, (_, index) => {
+            const startPage = Math.min(
+              Math.max(1, currentPage - 2),
+              Math.max(1, totalPages - 4)
+            );
+
+            const pageNumber = startPage + index;
+
             return (
               <button
-                key={pageNum}
-                onClick={() => setCurrentPage(pageNum)}
+                key={pageNumber}
+                type="button"
+                onClick={() => setCurrentPage(pageNumber)}
                 className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted"
                 style={{
                   fontFamily: "Poppins",
                   borderRadius: "6px",
                   borderColor: "#e3e3e3",
                   backgroundColor:
-                    currentPage === pageNum ? "#f30100" : "white",
-                  color: currentPage === pageNum ? "white" : "inherit",
+                    currentPage === pageNumber ? "#f30100" : "white",
+                  color: currentPage === pageNumber ? "white" : "inherit",
                 }}
               >
-                {pageNum}
+                {pageNumber}
               </button>
             );
           })}
+
           <button
+            type="button"
             onClick={() =>
-              setCurrentPage(Math.min(totalPages, currentPage + 1))
+              setCurrentPage((previous) => Math.min(totalPages, previous + 1))
             }
             disabled={currentPage === totalPages}
             className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50"
-            style={{
-              fontFamily: "Poppins",
-              borderRadius: "6px",
-              borderColor: "#e3e3e3",
-            }}
           >
             Next
           </button>
+
           <button
+            type="button"
             onClick={() => setCurrentPage(totalPages)}
             disabled={currentPage === totalPages}
             className="px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50"
-            style={{
-              fontFamily: "Poppins",
-              borderRadius: "6px",
-              borderColor: "#e3e3e3",
-            }}
           >
             Last
           </button>
         </div>
       </div>
 
+      {/* Create / Edit Modal */}
       <MaintainerFormModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         maintainer={editing}
       />
 
+      {/* View Modal */}
       <MaintainerViewModal
         isOpen={!!viewing}
         onClose={() => setViewing(null)}
         maintainer={viewing}
+      />
+
+      {/* Delete Modal - mounted outside RowActionsMenu */}
+      <DeleteModal
+        isOpen={!!deleteTarget}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteTarget(null);
+          }
+        }}
+        endpoint={`maintainers/${deleteTarget?.id ?? ""}`}
+        queryKey={["get_maintainers"]}
+        itemName={
+          deleteTarget
+            ? `${deleteTarget.firstName} ${deleteTarget.lastName}`
+            : undefined
+        }
+        entity="Maintainer"
+        successMessage="Maintainer deleted successfully"
+        isCode
+        onSuccess={() => setDeleteTarget(null)}
       />
     </div>
   );

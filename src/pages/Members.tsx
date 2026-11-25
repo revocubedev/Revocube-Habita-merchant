@@ -24,6 +24,7 @@ import {
   useSuspendEstateMember,
   useUnsuspendEstateMember,
 } from "@/api/api_controllers/members";
+import ViewMemberModal from "@/components/portal/ViewMemberModal";
 
 const relationName = (
   relation: MemberRelation | MemberRelation[] | null | undefined
@@ -61,9 +62,11 @@ const backendStatus = (member: Member): ActionStatus => {
 const MemberActions = ({
   memberId,
   onStatusChange,
+  onView,
 }: {
   memberId: string;
   onStatusChange: (memberId: string, status: ActionStatus) => void;
+  onView: () => void;
 }) => {
   const remove = useRemoveEstateMember(memberId);
   const restore = useRestoreEstateMember(memberId);
@@ -105,6 +108,16 @@ const MemberActions = ({
     >
       {(close) => (
         <>
+          <RowAction
+            onClick={() => {
+              close();
+              onView();
+            }}
+          >
+            <img src="/assets/view.svg" alt="" width={16} height={16} />
+            View
+          </RowAction>
+
           <RowAction
             disabled={isBusy}
             onClick={() =>
@@ -168,11 +181,13 @@ const Members = () => {
     "Member Name",
     "Phone Number",
     "Address",
+    "joined Date",
     "Property",
     "Unit",
     "Status",
     "Actions",
   ]);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [memberStatuses, setMemberStatuses] = useState<
@@ -190,6 +205,7 @@ const Members = () => {
     { id: "Member Name", label: "Member Name" },
     { id: "Phone Number", label: "Phone Number" },
     { id: "Address", label: "Address" },
+    { id: "Joined Date", label: "JoinedAt" },
     { id: "Property", label: "Property" },
     { id: "Unit", label: "Unit" },
     { id: "Status", label: "Status" },
@@ -209,16 +225,26 @@ const Members = () => {
     switch (column) {
       case "Member Name":
         return (
-          member.name ??
-          `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim() ??
+          (member.name ??
+            `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim() ??
+            "—") ||
           "—"
-        ) || "—";
+        );
 
       case "Phone Number":
         return member.phoneNumber ?? member.phone ?? "—";
 
       case "Address":
         return member.streetAddress ?? "—";
+
+      case "Joined Date":
+        return member.joinedAt
+          ? new Date(member.joinedAt).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
+          : "—";
 
       case "Property":
         return relationName(member.properties);
@@ -228,8 +254,7 @@ const Members = () => {
 
       case "Status":
         return (
-          memberStatuses[member.id]?.message ??
-          backendStatus(member).message
+          memberStatuses[member.id]?.message ?? backendStatus(member).message
         );
 
       default:
@@ -483,131 +508,131 @@ const Members = () => {
         style={{ borderRadius: "10px" }}
       >
         <CardContent className="p-0">
-        
-  <div className="mb-6 flex flex-wrap items-center gap-3 px-6 pt-6">
-    {/* Search */}
-    <Input
-      placeholder="Search by name..."
-      value={searchQuery}
-      onChange={(e) => {
-        setSearchQuery(e.target.value);
-        setCurrentPage(1);
-      }}
-      leftIcon={
-        <img src="/assets/search.svg" alt="" width={18} height={18} />
-      }
-      className="h-11 w-[226px] border-[#eaeaea] bg-white text-sm placeholder:text-[#a1a1a1]"
-    />
+          <div className="mb-6 flex flex-wrap items-center gap-3 px-6 pt-6">
+            {/* Search */}
+            <Input
+              placeholder="Search by name..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              leftIcon={
+                <img src="/assets/search.svg" alt="" width={18} height={18} />
+              }
+              className="h-11 w-[226px] border-[#eaeaea] bg-white text-sm placeholder:text-[#a1a1a1]"
+            />
 
-    {/* Column Visibility Dropdown */}
-    <div className="relative column-menu-container">
-      <button
-        type="button"
-        onClick={() => {
-          setShowColumnMenu((value) => !value);
-          setShowExportMenu(false);
-        }}
-        className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors hover:bg-muted"
-        style={{
-          fontFamily: "Poppins",
-          borderRadius: "8px",
-          borderColor: "#e3e3e3",
-        }}
-      >
-        Column Visibility
-        <ChevronDown className="h-4 w-4" />
-      </button>
-
-      {showColumnMenu && (
-        <div
-          className="absolute left-0 top-full z-30 mt-1 w-48 rounded-lg border border-border bg-white p-2 shadow-lg"
-          style={{ borderColor: "#e3e3e3", borderRadius: "8px" }}
-        >
-          {columns.map((col) => (
-            <label
-              key={col.id}
-              className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
-              style={{ fontFamily: "Poppins" }}
-            >
-              <input
-                type="checkbox"
-                checked={visibleColumns.includes(col.id)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setVisibleColumns((previous) => [...previous, col.id]);
-                  } else {
-                    setVisibleColumns((previous) =>
-                      previous.filter((item) => item !== col.id)
-                    );
-                  }
+            {/* Column Visibility Dropdown */}
+            <div className="relative column-menu-container">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowColumnMenu((value) => !value);
+                  setShowExportMenu(false);
                 }}
-                className="rounded border-gray-300"
-                style={{ accentColor: "#f30100" }}
-              />
-              {col.label}
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors hover:bg-muted"
+                style={{
+                  fontFamily: "Poppins",
+                  borderRadius: "8px",
+                  borderColor: "#e3e3e3",
+                }}
+              >
+                Column Visibility
+                <ChevronDown className="h-4 w-4" />
+              </button>
 
-    {/* Export Dropdown */}
-    <div className="relative export-menu-container">
-      <button
-        type="button"
-        onClick={() => {
-          setShowExportMenu((value) => !value);
-          setShowColumnMenu(false);
-        }}
-        disabled={currentMembers.length === 0 || isLoading}
-        className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-        style={{
-          fontFamily: "Poppins",
-          borderRadius: "8px",
-          borderColor: "#e3e3e3",
-        }}
-      >
-        Export
-        <ChevronDown className="h-4 w-4" />
-      </button>
+              {showColumnMenu && (
+                <div
+                  className="absolute left-0 top-full z-30 mt-1 w-48 rounded-lg border border-border bg-white p-2 shadow-lg"
+                  style={{ borderColor: "#e3e3e3", borderRadius: "8px" }}
+                >
+                  {columns.map((col) => (
+                    <label
+                      key={col.id}
+                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
+                      style={{ fontFamily: "Poppins" }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns.includes(col.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setVisibleColumns((previous) => [
+                              ...previous,
+                              col.id,
+                            ]);
+                          } else {
+                            setVisibleColumns((previous) =>
+                              previous.filter((item) => item !== col.id)
+                            );
+                          }
+                        }}
+                        className="rounded border-gray-300"
+                        style={{ accentColor: "#f30100" }}
+                      />
+                      {col.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
 
-      {showExportMenu && (
-        <div
-          className="absolute left-0 top-full z-30 mt-1 w-36 rounded-lg border border-border bg-white p-1 shadow-lg"
-          style={{ borderColor: "#e3e3e3", borderRadius: "8px" }}
-        >
-          <button
-            type="button"
-            onClick={exportExcel}
-            className="w-full rounded px-3 py-2 text-left text-sm hover:bg-muted"
-            style={{ fontFamily: "Poppins" }}
-          >
-            Excel
-          </button>
+            {/* Export Dropdown */}
+            <div className="relative export-menu-container">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExportMenu((value) => !value);
+                  setShowColumnMenu(false);
+                }}
+                disabled={currentMembers.length === 0 || isLoading}
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  fontFamily: "Poppins",
+                  borderRadius: "8px",
+                  borderColor: "#e3e3e3",
+                }}
+              >
+                Export
+                <ChevronDown className="h-4 w-4" />
+              </button>
 
-          <button
-            type="button"
-            onClick={exportPDF}
-            className="w-full rounded px-3 py-2 text-left text-sm hover:bg-muted"
-            style={{ fontFamily: "Poppins" }}
-          >
-            PDF
-          </button>
+              {showExportMenu && (
+                <div
+                  className="absolute left-0 top-full z-30 mt-1 w-36 rounded-lg border border-border bg-white p-1 shadow-lg"
+                  style={{ borderColor: "#e3e3e3", borderRadius: "8px" }}
+                >
+                  <button
+                    type="button"
+                    onClick={exportExcel}
+                    className="w-full rounded px-3 py-2 text-left text-sm hover:bg-muted"
+                    style={{ fontFamily: "Poppins" }}
+                  >
+                    Excel
+                  </button>
 
-          <button
-            type="button"
-            onClick={copyMembers}
-            className="w-full rounded px-3 py-2 text-left text-sm hover:bg-muted"
-            style={{ fontFamily: "Poppins" }}
-          >
-            Copy
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
+                  <button
+                    type="button"
+                    onClick={exportPDF}
+                    className="w-full rounded px-3 py-2 text-left text-sm hover:bg-muted"
+                    style={{ fontFamily: "Poppins" }}
+                  >
+                    PDF
+                  </button>
 
-
+                  <button
+                    type="button"
+                    onClick={copyMembers}
+                    className="w-full rounded px-3 py-2 text-left text-sm hover:bg-muted"
+                    style={{ fontFamily: "Poppins" }}
+                  >
+                    Copy
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
 
           <div className="mt-6 border-y border-[#eaeaea]">
             <Table className="min-w-[940px]">
@@ -635,8 +660,8 @@ const Members = () => {
                       {isLoading
                         ? "Loading members..."
                         : isError
-                          ? "Could not load members."
-                          : "No members found."}
+                        ? "Could not load members."
+                        : "No members found."}
                     </TableCell>
                   </TableRow>
                 )}
@@ -655,8 +680,9 @@ const Members = () => {
                                 .toUpperCase()}
                             </div>
                             {member.name ??
-                              (`${member.firstName ?? ""} ${member.lastName ?? ""
-                                }`.trim() ||
+                              (`${member.firstName ?? ""} ${
+                                member.lastName ?? ""
+                              }`.trim() ||
                                 "—")}
                           </div>
                         </TableCell>
@@ -669,6 +695,20 @@ const Members = () => {
                       {visibleColumns.includes("Address") && (
                         <TableCell className="px-6 text-[#5f5f5f]">
                           {member.streetAddress ?? "—"}
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("Joined Date") && (
+                        <TableCell className="px-6 text-[#5f5f5f]">
+                          {member.joinedAt
+                            ? new Date(member.joinedAt).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                }
+                              )
+                            : "—"}
                         </TableCell>
                       )}
                       {visibleColumns.includes("Property") && (
@@ -688,12 +728,13 @@ const Members = () => {
                           return (
                             <TableCell className="px-6">
                               <span
-                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${status.phase === "pending"
+                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                                  status.phase === "pending"
                                     ? "bg-blue-50 text-blue-700"
                                     : status.phase === "error"
-                                      ? "bg-red-50 text-red-600"
-                                      : "bg-green-50 text-green-700"
-                                  }`}
+                                    ? "bg-red-50 text-red-600"
+                                    : "bg-green-50 text-green-700"
+                                }`}
                               >
                                 {status.message}
                               </span>
@@ -704,6 +745,7 @@ const Members = () => {
                         <TableCell className="px-6">
                           <MemberActions
                             memberId={member.id}
+                            onView={() => setSelectedMemberId(member.id)}
                             onStatusChange={(id, status) =>
                               setMemberStatuses((current) => ({
                                 ...current,
@@ -718,6 +760,11 @@ const Members = () => {
               </TableBody>
             </Table>
           </div>
+          <ViewMemberModal
+            isOpen={!!selectedMemberId}
+            memberId={selectedMemberId}
+            onClose={() => setSelectedMemberId(null)}
+          />
         </CardContent>
       </Card>
 
