@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
-import "sweetalert2/dist/sweetalert2.min.css";
-import useApiManager from "@/api/useApiManager";
-import type { TwoFactorLoginResponse } from "@/api/api_controllers/twoFactorController";
-import { useAuth } from "@/lib/auth";
-import type { User } from "@/types";
-import { estatePath } from "@/lib/estateRoutes";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
+import useApiManager from '@/api/useApiManager';
+import type { TwoFactorLoginResponse } from '@/api/api_controllers/twoFactorController';
+import { useAuth } from '@/lib/auth';
+import type { User } from '@/types';
+import { estatePath } from '@/lib/estateRoutes';
 
 type LoginResponse =
   | (TwoFactorLoginResponse & { requiresTwoFactor?: false })
@@ -20,13 +20,13 @@ type LoginResponse =
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   // Errors are toasted by the hook (sonner), so no onError needed here
   const { callApi: loginRequest, isLoading } = useApiManager({
-    endpoint: "/estate-managers/login",
-    method: "POST",
+    endpoint: '/estate-managers/login',
+    method: 'POST',
     isAuth: false,
     isCode: false,
     showSuccessToastt: false,
@@ -39,7 +39,7 @@ const Login = () => {
       const response: LoginResponse = await loginRequest({ email, password });
 
       if (response.requiresTwoFactor === true) {
-        navigate("/2fa-verify", {
+        navigate('/2fa-verify', {
           state: {
             challengeToken: response.data.challengeToken,
             expiresIn: response.data.expiresIn,
@@ -51,10 +51,10 @@ const Login = () => {
       const { token, manager, estates } = response.data;
       if (!token) {
         Swal.fire({
-          icon: "error",
-          title: "Login Failed",
-          text: "No authentication token received",
-          confirmButtonColor: "#f30100",
+          icon: 'error',
+          title: 'Login Failed',
+          text: 'No authentication token received',
+          confirmButtonColor: '#f30100',
         });
         return;
       }
@@ -63,10 +63,10 @@ const Login = () => {
 
       if (!estateCode) {
         Swal.fire({
-          icon: "error",
-          title: "Login Failed",
-          text: "No estate is linked to this account",
-          confirmButtonColor: "#f30100",
+          icon: 'error',
+          title: 'Login Failed',
+          text: 'No estate is linked to this account',
+          confirmButtonColor: '#f30100',
         });
         return;
       }
@@ -75,19 +75,19 @@ const Login = () => {
         id: manager.id,
         name: `${manager.firstName} ${manager.lastName}`.trim(),
         email: manager.email,
-        role: "",
+        role: '',
       };
 
       // Set before navigating: hooks read "est_code" from localStorage
-      localStorage.setItem("est_code", estateCode);
-      localStorage.setItem("estates", JSON.stringify(estates));
+      localStorage.setItem('est_code', estateCode);
+      localStorage.setItem('estates', JSON.stringify(estates));
       login(token, userData);
 
       await Swal.fire({
-        icon: "success",
-        title: "Login Successful",
-        text: "Welcome back!",
-        confirmButtonColor: "#f30100",
+        icon: 'success',
+        title: 'Login Successful',
+        text: 'Welcome back!',
+        confirmButtonColor: '#f30100',
         timer: 1500,
         timerProgressBar: true,
       });
@@ -101,13 +101,13 @@ const Login = () => {
     <div
       className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat"
       style={{
-        backgroundImage: "url(/assets/bgauthimg.png)",
-        fontFamily: "Poppins",
+        backgroundImage: 'url(/assets/bgauthimg.png)',
+        fontFamily: 'Poppins',
       }}
     >
       <div
         className="w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl"
-        style={{ borderRadius: "24px" }}
+        style={{ borderRadius: '24px' }}
       >
         <div className="mb-8">
           <img
@@ -119,13 +119,13 @@ const Login = () => {
 
         <h2
           className="text-2xl font-semibold mb-2"
-          style={{ fontFamily: "Poppins", color: "#393939" }}
+          style={{ fontFamily: 'Poppins', color: '#393939' }}
         >
           Welcome back!
         </h2>
         <p
           className="text-sm mb-6"
-          style={{ fontFamily: "Poppins", color: "#777777" }}
+          style={{ fontFamily: 'Poppins', color: '#777777' }}
         >
           Please enter your details to sign in
         </p>
@@ -134,7 +134,7 @@ const Login = () => {
           <div>
             <label
               className="block text-sm font-medium mb-2"
-              style={{ fontFamily: "Poppins", color: "#4c4c4c" }}
+              style={{ fontFamily: 'Poppins', color: '#4c4c4c' }}
             >
               Email Address
             </label>
@@ -146,9 +146,9 @@ const Login = () => {
               required
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#f30100]/20 transition-colors"
               style={{
-                fontFamily: "Poppins",
-                borderColor: "#e3e3e3",
-                height: "48px",
+                fontFamily: 'Poppins',
+                borderColor: '#e3e3e3',
+                height: '48px',
               }}
             />
           </div>
@@ -156,7 +156,7 @@ const Login = () => {
           <div>
             <label
               className="block text-sm font-medium mb-2"
-              style={{ fontFamily: "Poppins", color: "#4c4c4c" }}
+              style={{ fontFamily: 'Poppins', color: '#4c4c4c' }}
             >
               Password
             </label>
@@ -168,9 +168,9 @@ const Login = () => {
               required
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#f30100]/20 transition-colors"
               style={{
-                fontFamily: "Poppins",
-                borderColor: "#e3e3e3",
-                height: "48px",
+                fontFamily: 'Poppins',
+                borderColor: '#e3e3e3',
+                height: '48px',
               }}
             />
           </div>
@@ -179,7 +179,7 @@ const Login = () => {
             <a
               href="#"
               className="text-sm"
-              style={{ fontFamily: "Poppins", color: "#f30100" }}
+              style={{ fontFamily: 'Poppins', color: '#f30100' }}
             >
               Forgot password?
             </a>
@@ -190,25 +190,25 @@ const Login = () => {
             disabled={isLoading}
             className="w-full text-white transition-colors disabled:opacity-60"
             style={{
-              fontFamily: "Poppins",
-              borderRadius: "12px",
-              backgroundColor: "#f30100",
-              border: "none",
-              height: "48px",
-              fontSize: "16px",
+              fontFamily: 'Poppins',
+              borderRadius: '12px',
+              backgroundColor: '#f30100',
+              border: 'none',
+              height: '48px',
+              fontSize: '16px',
               fontWeight: 500,
             }}
           >
-            {isLoading ? "Signing in..." : "Login"}
+            {isLoading ? 'Signing in...' : 'Login'}
           </button>
         </form>
 
         <p
           className="mt-6 text-center text-sm"
-          style={{ fontFamily: "Poppins", color: "#777777" }}
+          style={{ fontFamily: 'Poppins', color: '#777777' }}
         >
-          Don't have an account?{" "}
-          <a href="#" className="font-medium" style={{ color: "#f30100" }}>
+          Don't have an account?{' '}
+          <a href="#" className="font-medium" style={{ color: '#f30100' }}>
             Sign up
           </a>
         </p>

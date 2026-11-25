@@ -1,3 +1,4 @@
+import Breadcrumbs from './Breadcrumbs';
 import { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
@@ -36,6 +37,7 @@ const PageLayout = ({ theme, toggleTheme }: PageLayoutProps) => {
         />
 
         <main className="flex-1 p-4 lg:p-8 overflow-x-hidden animate-slide-up">
+          <Breadcrumbs />
           <Outlet />
         </main>
       </div>
