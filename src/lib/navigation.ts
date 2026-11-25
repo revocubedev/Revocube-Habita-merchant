@@ -29,7 +29,7 @@ export const navItems: NavItem[] = [
     label: 'Management', 
     icon: Shield,
     children: [
-      { to: '/management/users', label: 'Users', icon: Users },
+      { to: '/management/users', label: 'Admin', icon: Users },
       { to: '/management/roles', label: 'Roles', icon: Shield },
       { to: '/management/logs', label: 'Logged History', icon: History },
     ]
