@@ -614,7 +614,7 @@ const Maintenance = () => {
                             ...getStatusBadgeStyle(request.status),
                           }}
                         >
-                          {request.status?.replaceAll("_", " ") || "Unknown"}
+                          {request.status?.replace(/_/g, " ") || "Unknown"}
                         </span>
                       </TableCell>
                     )}
@@ -812,7 +812,7 @@ const Maintenance = () => {
                     className="inline-block rounded-full px-3 py-1 text-xs font-medium"
                     style={getStatusBadgeStyle(repairDetails.status)}
                   >
-                    {repairDetails.status?.replaceAll("_", " ") || "Unknown"}
+                    {repairDetails.status?.replace(/_/g, " ") || "Unknown"}
                   </span>
                 </div>
 

@@ -4,15 +4,14 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
+
 RUN npm ci
 
-# Build arguments
-ARG VITE_BASE_URL
-ARG VITE_APP_URL
+# Build argument
+ARG VITE_API_BASE_URL
 
 # Create .env for Vite build
-RUN echo "VITE_BASE_URL=${VITE_BASE_URL}" > .env && \
-    echo "VITE_APP_URL=${VITE_APP_URL}" >> .env
+RUN echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" > .env
 
 # Copy source code
 COPY . .

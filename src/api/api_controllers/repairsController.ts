@@ -213,3 +213,82 @@ export const useGetRepairMaintainers = () =>
     isCode: true,
     select: parseOptions,
   });
+
+
+  export interface MemberPropertyOption {
+    id: string;
+    name: string;
+  }
+
+  export interface MemberUnitOption {
+    id: string;
+    name: string;
+    propertyId: string;
+  }
+
+  export interface MemberUnitsLookup {
+    properties: MemberPropertyOption[];
+    units: MemberUnitOption[];
+    autoSelectedUnit: MemberUnitOption | null;
+  }
+
+  // GET /:code/repairs/:memberId/units
+  export const useGetMemberUnits = (memberId?: string) =>
+    useGetApiManager({
+      queryKey: ["get_member_units", memberId ?? ""],
+      isAuth: true,
+      isCode: true,
+      endpoint: `repairs/${memberId}/units`,
+      enabled: Boolean(memberId),
+    });
+
+  // Response: { data: { member, properties[], units[{ id, name, property }], autoSelectedUnit } }
+  export const extractMemberUnits = (payload: any): MemberUnitsLookup => {
+    const d = payload?.data ?? {};
+    const rawUnits: any[] = Array.isArray(d.units) ? d.units : [];
+    const rawProperties: any[] = Array.isArray(d.properties)
+      ? d.properties
+      : [];
+
+    const units: MemberUnitOption[] = rawUnits
+      .filter((u) => u && typeof u.id === "string")
+      .map((u) => ({
+        id: u.id,
+        name: u.name ?? "Unnamed unit",
+        propertyId: String(u.property?.id ?? u.propertyId ?? ""),
+      }));
+
+    // Properties listed directly, plus any that only appear on a unit
+    const propertyMap = new Map<string, MemberPropertyOption>();
+    for (const p of rawProperties) {
+      if (p && typeof p.id === "string") {
+        propertyMap.set(p.id, { id: p.id, name: p.name ?? "Unnamed property" });
+      }
+    }
+    for (const u of rawUnits) {
+      const p = u?.property;
+      if (p && typeof p.id === "string" && !propertyMap.has(p.id)) {
+        propertyMap.set(p.id, { id: p.id, name: p.name ?? "Unnamed property" });
+      }
+    }
+
+    // autoSelectedUnit can be null, a unit id, or a unit object
+    const raw = d.autoSelectedUnit;
+    const autoId = typeof raw === "string" ? raw : raw?.id ?? raw?.unitId;
+    let autoSelectedUnit: MemberUnitOption | null = null;
+    if (autoId) {
+      autoSelectedUnit =
+        units.find((u) => u.id === String(autoId)) ??
+        (raw && typeof raw === "object"
+          ? {
+              id: String(autoId),
+              name: raw.name ?? "Unit",
+              propertyId: String(raw.property?.id ?? raw.propertyId ?? ""),
+            }
+          : null);
+      if (autoSelectedUnit && !autoSelectedUnit.propertyId)
+        autoSelectedUnit = null;
+    }
+
+    return { properties: [...propertyMap.values()], units, autoSelectedUnit };
+  };

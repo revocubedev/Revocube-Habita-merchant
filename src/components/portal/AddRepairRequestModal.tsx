@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { X, Upload, Loader2 } from "lucide-react";
 import type { TypeOption } from "@/api/api_controllers/types";
+import {
+  useGetMemberUnits,
+  extractMemberUnits,
+} from "@/api/api_controllers/repairsController";
 
 export interface RepairOption {
   id: string;
@@ -12,6 +16,12 @@ export interface RepairUnitOption extends RepairOption {
   propertyId: string;
 }
 
+export interface RepairIssueTypeOption {
+  id: string;
+  value: string;
+  label: string;
+}
+
 interface CreateRepairRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,18 +29,9 @@ interface CreateRepairRequestModalProps {
   isSubmitting?: boolean;
   isLoadingOptions?: boolean;
   members: RepairOption[];
-  properties: RepairOption[];
-  units: RepairUnitOption[];
   maintainers: RepairOption[];
-  // issueTypes: RepairIssueTypeOption[];
   isLoadingIssueTypes?: boolean;
   issueTypes: TypeOption[];
-}
-
-export interface RepairIssueTypeOption {
-  id: string;
-  value: string;
-  label: string;
 }
 
 const getToday = () => {
@@ -47,8 +48,6 @@ const CreateRepairRequestModal = ({
   isSubmitting = false,
   isLoadingOptions = false,
   members,
-  properties,
-  units,
   maintainers,
   issueTypes,
   isLoadingIssueTypes = false,
@@ -61,19 +60,71 @@ const CreateRepairRequestModal = ({
   const [maintainerId, setMaintainerId] = useState("");
   const [notes, setNotes] = useState("");
   const [issueDocument, setIssueDocument] = useState<File | null>(null);
+  const [formError, setFormError] = useState("");
 
-  const filteredUnits = useMemo(
-    () => units.filter((unit) => unit.propertyId === propertyId),
-    [units, propertyId]
+  // The member's own properties and units
+  const memberUnitsQuery = useGetMemberUnits(memberId);
+  const memberLookup = useMemo(
+    () => extractMemberUnits(memberUnitsQuery.data),
+    [memberUnitsQuery.data]
   );
+  const memberProperties = memberLookup.properties;
+  const filteredUnits = useMemo(
+    () => memberLookup.units.filter((unit) => unit.propertyId === propertyId),
+    [memberLookup, propertyId]
+  );
+  const loadingMemberUnits = memberUnitsQuery.isLoading;
+
+  // Prefill property and unit when the member's data arrives
+  useEffect(() => {
+    if (!memberId || !memberUnitsQuery.data) return;
+
+    const { properties, units, autoSelectedUnit } = memberLookup;
+
+    if (autoSelectedUnit) {
+      setPropertyId(autoSelectedUnit.propertyId);
+      setUnitId(autoSelectedUnit.id);
+      return;
+    }
+
+    if (properties.length === 1) {
+      const onlyProperty = properties[0];
+      const ownUnits = units.filter((u) => u.propertyId === onlyProperty.id);
+      setPropertyId(onlyProperty.id);
+      setUnitId(ownUnits.length === 1 ? ownUnits[0].id : "");
+    }
+  }, [memberId, memberUnitsQuery.data, memberLookup]);
+
+  useEffect(() => {
+    if (issueTypes.length === 0) return;
+
+    setRepairIssueTypeId((current) =>
+      issueTypes.some((type) => type.id === current)
+        ? current
+        : issueTypes[0].id
+    );
+  }, [issueTypes]);
+
+  const handleMemberChange = (id: string) => {
+    setMemberId(id);
+    setPropertyId("");
+    setUnitId("");
+  };
+
+  const handlePropertyChange = (id: string) => {
+    setPropertyId(id);
+    const ownUnits = memberLookup.units.filter((u) => u.propertyId === id);
+    setUnitId(ownUnits.length === 1 ? ownUnits[0].id : "");
+  };
 
   if (!isOpen) return null;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setFormError("");
 
     if (!repairIssueTypeId) {
-      console.error("Please select a repair issue type");
+      setFormError("Please select an issue type.");
       return;
     }
 
@@ -91,29 +142,29 @@ const CreateRepairRequestModal = ({
       formData.append("issueDocument", issueDocument);
     }
 
-    console.log("Repair request payload:");
-
-    for (const [key, value] of formData.entries()) {
-      console.log(`${key}:`, value);
-    }
-
     await onSubmit(formData);
   };
-
-  useEffect(() => {
-    if (issueTypes.length === 0) return;
-
-    setRepairIssueTypeId((current) =>
-      issueTypes.some((type) => type.id === current)
-        ? current
-        : issueTypes[0].id
-    );
-  }, [issueTypes]);
 
   const inputClass =
     "w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#f30100] focus:ring-1 focus:ring-[#f30100] disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400";
 
   const labelClass = "mb-1.5 block text-sm font-medium text-gray-700";
+
+  const propertyPlaceholder = !memberId
+    ? "Select a member first"
+    : loadingMemberUnits
+    ? "Loading properties..."
+    : memberUnitsQuery.isError
+    ? "Could not load properties"
+    : memberProperties.length === 0
+    ? "No properties found for this member"
+    : "Select property";
+
+  const unitPlaceholder = !propertyId
+    ? "Select a property first"
+    : filteredUnits.length === 0
+    ? "No units available"
+    : "Select unit";
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
@@ -141,6 +192,12 @@ const CreateRepairRequestModal = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5 p-6">
+          {formError && (
+            <p role="alert" className="text-sm text-red-600">
+              {formError}
+            </p>
+          )}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Request Date */}
             <div>
@@ -185,7 +242,7 @@ const CreateRepairRequestModal = ({
               <label className={labelClass}>Member *</label>
               <select
                 value={memberId}
-                onChange={(e) => setMemberId(e.target.value)}
+                onChange={(e) => handleMemberChange(e.target.value)}
                 className={inputClass}
                 required
                 disabled={
@@ -206,6 +263,12 @@ const CreateRepairRequestModal = ({
                   </option>
                 ))}
               </select>
+              {memberUnitsQuery.isError && (
+                <p className="mt-1 text-xs text-red-600">
+                  {(memberUnitsQuery.error as Error)?.message ||
+                    "Could not load this member's properties and units."}
+                </p>
+              )}
             </div>
 
             {/* Property */}
@@ -213,25 +276,21 @@ const CreateRepairRequestModal = ({
               <label className={labelClass}>Property *</label>
               <select
                 value={propertyId}
-                onChange={(e) => {
-                  setPropertyId(e.target.value);
-                  setUnitId("");
-                }}
+                onChange={(e) => handlePropertyChange(e.target.value)}
                 className={inputClass}
                 required
                 disabled={
-                  isLoadingOptions || isSubmitting || properties.length === 0
+                  !memberId ||
+                  loadingMemberUnits ||
+                  isSubmitting ||
+                  memberProperties.length === 0
                 }
               >
                 <option value="" disabled>
-                  {isLoadingOptions
-                    ? "Loading properties..."
-                    : properties.length === 0
-                    ? "No properties available"
-                    : "Select property"}
+                  {propertyPlaceholder}
                 </option>
 
-                {properties.map((property) => (
+                {memberProperties.map((property) => (
                   <option key={property.id} value={property.id}>
                     {property.name}
                   </option>
@@ -248,20 +307,11 @@ const CreateRepairRequestModal = ({
                 className={inputClass}
                 required
                 disabled={
-                  !propertyId ||
-                  isLoadingOptions ||
-                  isSubmitting ||
-                  filteredUnits.length === 0
+                  !propertyId || isSubmitting || filteredUnits.length === 0
                 }
               >
                 <option value="" disabled>
-                  {!propertyId
-                    ? "Select a property first"
-                    : isLoadingOptions
-                    ? "Loading units..."
-                    : filteredUnits.length === 0
-                    ? "No units available"
-                    : "Select unit"}
+                  {unitPlaceholder}
                 </option>
 
                 {filteredUnits.map((unit) => (
@@ -368,6 +418,7 @@ const CreateRepairRequestModal = ({
               disabled={
                 isSubmitting ||
                 isLoadingOptions ||
+                loadingMemberUnits ||
                 isLoadingIssueTypes ||
                 issueTypes.length === 0
               }
