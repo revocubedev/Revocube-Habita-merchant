@@ -49,12 +49,23 @@ export interface UnitsListResponse {
 const QUERY_KEY = "get_units";
 
 // GET /:code/units
-export const useGetUnits = ({ page = 1, perPage = 10, search = "" }: { page?: number; perPage?: number; search?: string }) => {
+export const useGetUnits = ({
+  page = 1,
+  perPage = 10,
+  search = "",
+  enabled = true,
+}: {
+  page?: number;
+  perPage?: number;
+  search?: string;
+  enabled?: boolean;
+}) => {
   const q = useGetApiManager({
     queryKey: [QUERY_KEY, page, perPage, search],
     endpoint: "units",
     isAuth: true,
     isCode: true,
+    enabled,
     params: { page, perPage, ...(search ? { search } : {}) },
   });
   return { ...q, list: (q.data?.data ?? null) as UnitsListResponse | null };
