@@ -1,3 +1,5 @@
+import Select from '@/components/ui/Select';
+import LoadingState from '@/components/ui/LoadingState';
 import { useState, useEffect } from "react";
 import {
   Search,
@@ -69,7 +71,7 @@ const Maintainers = () => {
   const [deleteTarget, setDeleteTarget] = useState<Maintainer | null>(null);
 
   // Dedicated delete hook
-  const { deleteMaintainer, isLoading: isDeleting } = useDeleteMaintainer(
+  const { isLoading: isDeleting } = useDeleteMaintainer(
     deleteTarget?.id
   );
 
@@ -125,17 +127,6 @@ const Maintainers = () => {
     };
   }, []);
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-
-    try {
-      await deleteMaintainer();
-      setDeleteTarget(null);
-    } catch {
-      // useApiManager handles the error toast.
-      // Keep the modal open if deletion fails.
-    }
-  };
 
   const toggleColumn = (columnId: string, checked: boolean) => {
     setVisibleColumns((previous) =>
@@ -274,7 +265,7 @@ const Maintainers = () => {
                     className="text-center text-muted-foreground py-8"
                   >
                     {isLoading
-                      ? "Loading maintainers..."
+                      ? <LoadingState label="Loading maintainers..." />
                       : isError
                       ? (error as Error)?.message ||
                         "Failed to load maintainers"
@@ -377,7 +368,7 @@ const Maintainers = () => {
             Show
           </span>
 
-          <select
+          <Select
             value={pageSize}
             onChange={(event) => {
               setPageSize(Number(event.target.value));
@@ -394,7 +385,7 @@ const Maintainers = () => {
             <option value={15}>15</option>
             <option value={25}>25</option>
             <option value={50}>50</option>
-          </select>
+          </Select>
 
           <span
             className="text-sm text-muted-foreground"

@@ -1,6 +1,10 @@
+import DatePicker from '@/components/ui/DatePicker';
+import FileUpload from '@/components/ui/FileUpload';
+import Select from '@/components/ui/Select';
+import Modal from '@/components/ui/Modal';
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { X, Upload, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { TypeOption } from "@/api/api_controllers/types";
 import {
   useGetMemberUnits,
@@ -167,30 +171,7 @@ const CreateRepairRequestModal = ({
     : "Select unit";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-xl">
-        {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-800">
-              Create Maintenance Request
-            </h2>
-            <p className="mt-1 text-xs text-gray-500">
-              Fill in the details to create a repair request.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
-            aria-label="Close modal"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
+    <Modal isOpen={isOpen} onClose={() => { if (!isSubmitting) onClose(); }} title="Create Maintenance Request" size="lg" bodyClassName="p-0">
         <form onSubmit={handleSubmit} className="space-y-5 p-6">
           {formError && (
             <p role="alert" className="text-sm text-red-600">
@@ -202,8 +183,7 @@ const CreateRepairRequestModal = ({
             {/* Request Date */}
             <div>
               <label className={labelClass}>Request Date *</label>
-              <input
-                type="date"
+              <DatePicker
                 value={requestDate}
                 onChange={(e) => setRequestDate(e.target.value)}
                 className={inputClass}
@@ -216,7 +196,7 @@ const CreateRepairRequestModal = ({
             <div>
               <label className={labelClass}>Issue Type *</label>
 
-              <select
+              <Select
                 value={repairIssueTypeId}
                 onChange={(e) => setRepairIssueTypeId(e.target.value)}
                 className={inputClass}
@@ -234,13 +214,13 @@ const CreateRepairRequestModal = ({
                     {type.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* Member */}
             <div>
               <label className={labelClass}>Member *</label>
-              <select
+              <Select
                 value={memberId}
                 onChange={(e) => handleMemberChange(e.target.value)}
                 className={inputClass}
@@ -262,7 +242,7 @@ const CreateRepairRequestModal = ({
                     {member.name}
                   </option>
                 ))}
-              </select>
+              </Select>
               {memberUnitsQuery.isError && (
                 <p className="mt-1 text-xs text-red-600">
                   {(memberUnitsQuery.error as Error)?.message ||
@@ -274,7 +254,7 @@ const CreateRepairRequestModal = ({
             {/* Property */}
             <div>
               <label className={labelClass}>Property *</label>
-              <select
+              <Select
                 value={propertyId}
                 onChange={(e) => handlePropertyChange(e.target.value)}
                 className={inputClass}
@@ -295,13 +275,13 @@ const CreateRepairRequestModal = ({
                     {property.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* Unit */}
             <div>
               <label className={labelClass}>Unit *</label>
-              <select
+              <Select
                 value={unitId}
                 onChange={(e) => setUnitId(e.target.value)}
                 className={inputClass}
@@ -319,13 +299,13 @@ const CreateRepairRequestModal = ({
                     {unit.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* Maintainer */}
             <div>
               <label className={labelClass}>Assign Maintainer *</label>
-              <select
+              <Select
                 value={maintainerId}
                 onChange={(e) => setMaintainerId(e.target.value)}
                 className={inputClass}
@@ -347,7 +327,7 @@ const CreateRepairRequestModal = ({
                     {maintainer.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -369,26 +349,7 @@ const CreateRepairRequestModal = ({
           <div>
             <label className={labelClass}>Attachment (Optional)</label>
 
-            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-gray-300 p-4 hover:border-[#f30100]">
-              <Upload className="shrink-0 text-gray-400" size={22} />
-
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-gray-700">
-                  {issueDocument?.name || "Upload an image or document"}
-                </p>
-                <p className="text-xs text-gray-400">
-                  Choose a file from your device
-                </p>
-              </div>
-
-              <input
-                type="file"
-                accept="image/*,.pdf,.doc,.docx"
-                className="hidden"
-                disabled={isSubmitting}
-                onChange={(e) => setIssueDocument(e.target.files?.[0] ?? null)}
-              />
-            </label>
+            <FileUpload file={issueDocument} aria-label="Repair attachment" accept="image/*,.pdf,.doc,.docx" disabled={isSubmitting} onChange={(e) => setIssueDocument(e.target.files?.[0] ?? null)} />
 
             {issueDocument && (
               <button
@@ -430,8 +391,7 @@ const CreateRepairRequestModal = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

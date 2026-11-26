@@ -8,6 +8,24 @@ interface ViewMemberModalProps {
   memberId: string | null;
 }
 
+const relationList = (value: Member['properties']) =>
+  (value == null ? [] : Array.isArray(value) ? value : [value]).map((relation, index) => {
+    const record: Record<string, unknown> =
+      typeof relation === 'string' ? { name: relation } : { ...relation };
+    const text = (key: string) => {
+      const value = record[key];
+      return typeof value === 'string' ? value : '';
+    };
+    return {
+      id: text('id') || String(index),
+      name: text('name'),
+      address: text('address'),
+      city: text('city'),
+      state: text('state'),
+      propertyName: text('propertyName'),
+    };
+  });
+
 const ViewMemberModal = ({
   isOpen,
   onClose,
@@ -23,6 +41,9 @@ const ViewMemberModal = ({
   // the member may be in response.data or response directly.
   const member: Member | undefined =
     response?.data ?? (response as unknown as Member | undefined);
+
+  const properties = relationList(member?.properties);
+  const units = relationList(member?.units);
 
   const inputClass = `${inputCls} bg-muted/30`;
 
@@ -84,13 +105,13 @@ const ViewMemberModal = ({
                 Properties
               </h3>
               <span className="rounded-full bg-muted px-2.5 py-1 text-xs">
-                {member.properties?.length ?? 0}
+                {properties.length}
               </span>
             </div>
 
-            {member.properties?.length ? (
+            {properties.length ? (
               <div className="space-y-3">
-                {member.properties.map((property) => (
+                {properties.map((property) => (
                   <div
                     key={property.id}
                     className="rounded-lg border border-border p-4"
@@ -123,13 +144,13 @@ const ViewMemberModal = ({
                 Assigned Units
               </h3>
               <span className="rounded-full bg-muted px-2.5 py-1 text-xs">
-                {member.units?.length ?? 0}
+                {units.length}
               </span>
             </div>
 
-            {member.units?.length ? (
+            {units.length ? (
               <div className="space-y-3">
-                {member.units.map((unit) => (
+                {units.map((unit) => (
                   <div
                     key={unit.id}
                     className="rounded-lg border border-border p-4"

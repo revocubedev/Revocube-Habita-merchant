@@ -1,24 +1,25 @@
-import { useEffect, useState } from "react";
-import Modal, { inputCls } from "@/components/ui/Modal";
+import FileUpload from '@/components/ui/FileUpload';
+import Select from '@/components/ui/Select';
+import { useEffect, useState } from 'react';
+import Modal, { inputCls } from '@/components/ui/Modal';
 import {
   MaintainerFormValues,
   useCreateMaintainer,
   useUpdateMaintainer,
   type Maintainer,
-} from "@/api/api_controllers/maintainerController";
+} from '@/api/api_controllers/maintainerController';
 import {
   useGetMaintainerTypes,
   extractTypes,
-} from "@/api/api_controllers/types";
-
+} from '@/api/api_controllers/types';
 
 const empty: MaintainerFormValues = {
-  firstName: "",
-  lastName: "",
-  email: "",
-  phoneNumber: "",
-  password: "",
-  maintainerTypeId: "",
+  firstName: '',
+  lastName: '',
+  email: '',
+  phoneNumber: '',
+  password: '',
+  maintainerTypeId: '',
   profileImage: null,
 };
 
@@ -55,7 +56,7 @@ const MaintainerFormModal = ({ isOpen, onClose, maintainer }: Props) => {
             lastName: maintainer.lastName,
             email: maintainer.email,
             phoneNumber: maintainer.phoneNumber,
-            password: "",
+            password: '',
             maintainerTypeId: maintainer.maintainerTypeId,
             profileImage: null,
           }
@@ -89,7 +90,7 @@ const MaintainerFormModal = ({ isOpen, onClose, maintainer }: Props) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEdit ? "Edit Maintainer" : "Create Maintainer"}
+      title={isEdit ? 'Edit Maintainer' : 'Create Maintainer'}
       size="lg"
     >
       <form
@@ -105,7 +106,7 @@ const MaintainerFormModal = ({ isOpen, onClose, maintainer }: Props) => {
             required
             className={inputCls}
             value={values.firstName}
-            onChange={(e) => set("firstName", e.target.value)}
+            onChange={(e) => set('firstName', e.target.value)}
           />
         </label>
 
@@ -117,7 +118,7 @@ const MaintainerFormModal = ({ isOpen, onClose, maintainer }: Props) => {
             required
             className={inputCls}
             value={values.lastName}
-            onChange={(e) => set("lastName", e.target.value)}
+            onChange={(e) => set('lastName', e.target.value)}
           />
         </label>
 
@@ -130,7 +131,7 @@ const MaintainerFormModal = ({ isOpen, onClose, maintainer }: Props) => {
             autoComplete="off"
             className={inputCls}
             value={values.email}
-            onChange={(e) => set("email", e.target.value)}
+            onChange={(e) => set('email', e.target.value)}
           />
         </label>
 
@@ -142,13 +143,13 @@ const MaintainerFormModal = ({ isOpen, onClose, maintainer }: Props) => {
             required
             className={inputCls}
             value={values.phoneNumber}
-            onChange={(e) => set("phoneNumber", e.target.value)}
+            onChange={(e) => set('phoneNumber', e.target.value)}
           />
         </label>
 
         <label className="text-sm space-y-2 block">
           <span className="block font-medium text-muted-foreground">
-            Password{" "}
+            Password{' '}
             {isEdit && (
               <span className="text-muted-foreground">
                 (leave blank to keep)
@@ -162,7 +163,7 @@ const MaintainerFormModal = ({ isOpen, onClose, maintainer }: Props) => {
             required={!isEdit}
             className={inputCls}
             value={values.password}
-            onChange={(e) => set("password", e.target.value)}
+            onChange={(e) => set('password', e.target.value)}
           />
         </label>
 
@@ -172,19 +173,19 @@ const MaintainerFormModal = ({ isOpen, onClose, maintainer }: Props) => {
             Maintainer type
           </span>
 
-          <select
+          <Select
             required
             className={inputCls}
             value={values.maintainerTypeId}
             disabled={loadingTypes || maintainerTypes.length === 0}
-            onChange={(e) => set("maintainerTypeId", e.target.value)}
+            onChange={(e) => set('maintainerTypeId', e.target.value)}
           >
             <option value="">
               {loadingTypes
-                ? "Loading maintainer types..."
+                ? 'Loading maintainer types...'
                 : maintainerTypes.length === 0
-                ? "No maintainer types available"
-                : "Select maintainer type"}
+                  ? 'No maintainer types available'
+                  : 'Select maintainer type'}
             </option>
 
             {maintainerTypes.map((type) => (
@@ -192,7 +193,7 @@ const MaintainerFormModal = ({ isOpen, onClose, maintainer }: Props) => {
                 {type.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
 
         <div className="text-sm space-y-2 col-span-2">
@@ -200,39 +201,15 @@ const MaintainerFormModal = ({ isOpen, onClose, maintainer }: Props) => {
             Profile image
           </span>
 
-          <label className="flex items-center gap-4 p-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors">
-            {values.profileImage ? (
-              <img
-                src={URL.createObjectURL(values.profileImage)}
-                alt="Preview"
-                className="h-12 w-12 rounded-full object-cover"
-              />
-            ) : (
-              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xl">
-                +
-              </div>
-            )}
-
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-foreground truncate">
-                {values.profileImage
-                  ? values.profileImage.name
-                  : "Click to upload a photo"}
-              </p>
-              <p className="text-xs text-muted-foreground">PNG or JPG</p>
-            </div>
-
-            <span className="px-4 py-2 rounded-lg border border-border text-foreground font-medium">
-              {values.profileImage ? "Change" : "Choose file"}
-            </span>
-
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => set("profileImage", e.target.files?.[0] ?? null)}
-            />
-          </label>
+          <FileUpload
+            file={values.profileImage}
+            aria-label="Maintainer profile image"
+            accept="image/*"
+            disabled={busy}
+            onChange={(event) =>
+              set('profileImage', event.target.files?.[0] ?? null)
+            }
+          />
         </div>
 
         <div className="col-span-2 flex justify-end gap-3 pt-2">
@@ -248,9 +225,9 @@ const MaintainerFormModal = ({ isOpen, onClose, maintainer }: Props) => {
             type="submit"
             disabled={busy || loadingTypes || maintainerTypes.length === 0}
             className="px-5 py-2.5 text-sm text-white rounded-lg disabled:opacity-60"
-            style={{ backgroundColor: "#f30100" }}
+            style={{ backgroundColor: '#f30100' }}
           >
-            {busy ? "Saving..." : isEdit ? "Save changes" : "Create"}
+            {busy ? 'Saving...' : isEdit ? 'Save changes' : 'Create'}
           </button>
         </div>
       </form>

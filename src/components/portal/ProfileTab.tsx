@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
-import { Upload } from "lucide-react";
-import { useAuth } from "@/lib/auth";
+import LoadingState from '@/components/ui/LoadingState';
+import FileUpload from '@/components/ui/FileUpload';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/lib/auth';
 import {
   useGetProfile,
   useUpdateProfile,
   extractProfile,
-} from "@/api/api_controllers/userController";
+} from '@/api/api_controllers/userController';
 
 interface Profile {
   firstName?: string;
@@ -16,19 +17,19 @@ interface Profile {
 }
 
 const inputClass =
-  "w-full px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-brand-text/20";
+  'w-full px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-brand-text/20';
 const inputStyle = {
-  fontFamily: "Poppins",
-  borderColor: "#e3e3e3",
-  height: "40px",
+  fontFamily: 'Poppins',
+  borderColor: '#e3e3e3',
+  height: '40px',
 };
-const labelStyle = { fontFamily: "Poppins", color: "#4c4c4c" };
+const labelStyle = { fontFamily: 'Poppins', color: '#4c4c4c' };
 
 const ProfileForm = ({ profile }: { id: string; profile: Profile }) => {
-  const [firstName, setFirstName] = useState(profile.firstName ?? "");
-  const [lastName, setLastName] = useState(profile.lastName ?? "");
-  const [email, setEmail] = useState(profile.email ?? "");
-  const [phoneNumber, setPhoneNumber] = useState(profile.phoneNumber ?? "");
+  const [firstName, setFirstName] = useState(profile.firstName ?? '');
+  const [lastName, setLastName] = useState(profile.lastName ?? '');
+  const [email, setEmail] = useState(profile.email ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(profile.phoneNumber ?? '');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
@@ -48,23 +49,23 @@ const ProfileForm = ({ profile }: { id: string; profile: Profile }) => {
 
   const unchanged =
     !file &&
-    firstName.trim() === (profile.firstName ?? "") &&
-    lastName.trim() === (profile.lastName ?? "") &&
-    email.trim() === (profile.email ?? "") &&
-    phoneNumber.trim() === (profile.phoneNumber ?? "");
+    firstName.trim() === (profile.firstName ?? '') &&
+    lastName.trim() === (profile.lastName ?? '') &&
+    email.trim() === (profile.email ?? '') &&
+    phoneNumber.trim() === (profile.phoneNumber ?? '');
 
   const canSave =
-    firstName.trim() !== "" && email.trim() !== "" && !unchanged && !isLoading;
+    firstName.trim() !== '' && email.trim() !== '' && !unchanged && !isLoading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const formData = new FormData();
-    formData.append("firstName", firstName.trim());
-    formData.append("lastName", lastName.trim());
-    formData.append("email", email.trim());
-    formData.append("phoneNumber", phoneNumber.trim());
-    if (file) formData.append("profilePicture", file);
+    formData.append('firstName', firstName.trim());
+    formData.append('lastName', lastName.trim());
+    formData.append('email', email.trim());
+    formData.append('phoneNumber', phoneNumber.trim());
+    if (file) formData.append('profilePicture', file);
 
     try {
       await updateProfile(formData);
@@ -82,14 +83,14 @@ const ProfileForm = ({ profile }: { id: string; profile: Profile }) => {
             src={avatar}
             alt="Profile"
             className="rounded-full object-cover"
-            style={{ width: "56px", height: "56px" }}
+            style={{ width: '56px', height: '56px' }}
           />
         ) : (
           <div
             className="rounded-full bg-muted flex items-center justify-center text-lg text-muted-foreground"
-            style={{ width: "56px", height: "56px", fontFamily: "Poppins" }}
+            style={{ width: '56px', height: '56px', fontFamily: 'Poppins' }}
           >
-            {(firstName || email || "?").charAt(0).toUpperCase()}
+            {(firstName || email || '?').charAt(0).toUpperCase()}
           </div>
         )}
       </div>
@@ -176,33 +177,13 @@ const ProfileForm = ({ profile }: { id: string; profile: Profile }) => {
           <label className="block text-sm font-medium mb-2" style={labelStyle}>
             Profile Picture
           </label>
-          <div className="flex items-center gap-4">
-            <input
-              type="file"
-              id="profile-upload"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-            <label
-              htmlFor="profile-upload"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border cursor-pointer hover:bg-muted transition-colors"
-              style={{
-                fontFamily: "Poppins",
-                borderColor: "#e3e3e3",
-                height: "40px",
-              }}
-            >
-              <Upload className="w-4 h-4" />
-              Choose File
-            </label>
-            <span
-              className="text-sm text-muted-foreground"
-              style={{ fontFamily: "Poppins" }}
-            >
-              {file ? file.name : "No File Chosen"}
-            </span>
-          </div>
+          <FileUpload
+            file={file}
+            aria-label="Profile picture"
+            accept="image/*"
+            disabled={isLoading}
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+          />
         </div>
       </div>
 
@@ -212,14 +193,14 @@ const ProfileForm = ({ profile }: { id: string; profile: Profile }) => {
           disabled={!canSave}
           className="text-sm text-white transition-colors flex items-center gap-2 px-6 py-2 disabled:opacity-60"
           style={{
-            fontFamily: "Poppins",
-            borderRadius: "8px",
-            backgroundColor: "#f30100",
-            border: "none",
-            height: "40px",
+            fontFamily: 'Poppins',
+            borderRadius: '8px',
+            backgroundColor: '#f30100',
+            border: 'none',
+            height: '40px',
           }}
         >
-          {isLoading ? "Saving..." : "Save"}
+          {isLoading ? 'Saving...' : 'Save'}
         </button>
       </div>
     </form>
@@ -236,11 +217,11 @@ const ProfileTab = () => {
   return (
     <div
       className="bg-card border border-border rounded-lg p-6"
-      style={{ borderColor: "#e3e3e3", borderRadius: "12px", border: "none" }}
+      style={{ borderColor: '#e3e3e3', borderRadius: '12px', border: 'none' }}
     >
       <h2
         className="text-base font-medium mb-6"
-        style={{ fontFamily: "Poppins", color: "#393939" }}
+        style={{ fontFamily: 'Poppins', color: '#393939' }}
       >
         User Profile
       </h2>
@@ -248,7 +229,7 @@ const ProfileTab = () => {
       {!id && (
         <p
           className="text-sm"
-          style={{ fontFamily: "Poppins", color: "#f30100" }}
+          style={{ fontFamily: 'Poppins', color: '#f30100' }}
         >
           Couldn't identify your account. Please log in again.
         </p>
@@ -257,18 +238,18 @@ const ProfileTab = () => {
       {isLoading && (
         <p
           className="text-sm text-muted-foreground"
-          style={{ fontFamily: "Poppins" }}
+          style={{ fontFamily: 'Poppins' }}
         >
-          Loading profile...
+          <LoadingState label="Loading profile..." />
         </p>
       )}
 
       {isError && (
         <p
           className="text-sm"
-          style={{ fontFamily: "Poppins", color: "#f30100" }}
+          style={{ fontFamily: 'Poppins', color: '#f30100' }}
         >
-          {(error as Error)?.message || "Failed to load profile"}
+          {(error as Error)?.message || 'Failed to load profile'}
         </p>
       )}
 

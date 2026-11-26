@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import LoadingState from '@/components/ui/LoadingState';
+import { useState, useEffect } from 'react';
 import {
   Search,
   FileSpreadsheet,
@@ -9,10 +10,10 @@ import {
   Eye,
   Ban,
   UserCheck,
-} from "lucide-react";
-import Card from "@/components/ui/Card";
-import { CardContent } from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
+} from 'lucide-react';
+import Card from '@/components/ui/Card';
+import { CardContent } from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 import {
   Table,
   TableHeader,
@@ -20,35 +21,35 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from "@/components/ui/Table";
-import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
-import DeleteModal from "@/components/ui/DeleteModal";
-import { useAuth } from "@/lib/auth";
-import UserModal, { type UserRecord } from "@/components/portal/UserModal";
+} from '@/components/ui/Table';
+import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
+import DeleteModal from '@/components/ui/DeleteModal';
+import { useAuth } from '@/lib/auth';
+import UserModal, { type UserRecord } from '@/components/portal/UserModal';
 import {
   // USERS_ENDPOINT,
   useGetUsers,
   extractUsers,
   extractTotal,
-} from "@/api/api_controllers/userController";
-import ViewUserModal from "@/components/portal/ViewUserModal";
-import SuspendUserModal from "@/components/portal/SuspendUserModal";
-import { isSuspended, prettyRole } from "@/lib/userUtilis";
-import UnsuspendUserModal from "@/components/portal/UnsuspendUserModal";
+} from '@/api/api_controllers/userController';
+import ViewUserModal from '@/components/portal/ViewUserModal';
+import SuspendUserModal from '@/components/portal/SuspendUserModal';
+import { isSuspended, prettyRole } from '@/lib/userUtilis';
+import UnsuspendUserModal from '@/components/portal/UnsuspendUserModal';
 
 const PER_PAGE = 10;
 
 const displayName = (u: UserRecord) =>
-  [u.firstName, u.lastName].filter(Boolean).join(" ") || u.name || "—";
+  [u.firstName, u.lastName].filter(Boolean).join(' ') || u.name || '—';
 
 const displayRole = (u: UserRecord) =>
   prettyRole(
-    u.roles?.[0]?.name ?? (typeof u.role === "string" ? u.role : u.role?.name)
+    u.roles?.[0]?.name ?? (typeof u.role === 'string' ? u.role : u.role?.name)
   );
 
 const Users = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -59,13 +60,12 @@ const Users = () => {
     null
   );
   const [visibleColumns, setVisibleColumns] = useState([
-    "User",
-    "Email",
+    'User',
+    'Email',
     // "Phone Number",
-    "Status",
-    "Assign Role",
+    'Status',
+    'Assign Role',
   ]);
-
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
@@ -105,19 +105,19 @@ const Users = () => {
   })();
 
   const columns = [
-    { id: "User", label: "User" },
-    { id: "Email", label: "Email" },
-    { id: "Phone Number", label: "Phone Number" },
-    { id: "Assign Role", label: "Assign Role" },
-    { id: "Status", label: "Status" },
+    { id: 'User', label: 'User' },
+    { id: 'Email', label: 'Email' },
+    { id: 'Phone Number', label: 'Phone Number' },
+    { id: 'Assign Role', label: 'Assign Role' },
+    { id: 'Status', label: 'Status' },
   ];
 
   const pageBtn =
-    "px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50";
+    'px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50';
   const pageBtnStyle = {
-    fontFamily: "Poppins",
-    borderRadius: "6px",
-    borderColor: "#e3e3e3",
+    fontFamily: 'Poppins',
+    borderRadius: '6px',
+    borderColor: '#e3e3e3',
   };
   const colSpan = visibleColumns.length + 1;
 
@@ -126,7 +126,7 @@ const Users = () => {
       <div className="flex items-center justify-between">
         <h2
           className="text-[16px] font-display font-medium text-foreground"
-          style={{ fontFamily: "Poppins", fontWeight: 500, color: "#4c4c4c" }}
+          style={{ fontFamily: 'Poppins', fontWeight: 500, color: '#4c4c4c' }}
         >
           Users List
         </h2>
@@ -134,10 +134,10 @@ const Users = () => {
           onClick={() => setIsCreateOpen(true)}
           className="text-sm text-white transition-colors"
           style={{
-            fontFamily: "Poppins",
-            borderRadius: "8px",
-            backgroundColor: "#f30100",
-            border: "none",
+            fontFamily: 'Poppins',
+            borderRadius: '8px',
+            backgroundColor: '#f30100',
+            border: 'none',
           }}
         >
           + Create User
@@ -150,7 +150,7 @@ const Users = () => {
           <input
             placeholder="Search by name..."
             className="w-full pl-9 pr-3 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-brand-text/20 transition-colors"
-            style={{ fontFamily: "Poppins", borderColor: "#e3e3e3" }}
+            style={{ fontFamily: 'Poppins', borderColor: '#e3e3e3' }}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -161,9 +161,9 @@ const Users = () => {
             onClick={() => setShowColumnMenu(!showColumnMenu)}
             className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-card hover:bg-muted transition-colors"
             style={{
-              fontFamily: "Poppins",
-              borderRadius: "8px",
-              borderColor: "#e3e3e3",
+              fontFamily: 'Poppins',
+              borderRadius: '8px',
+              borderColor: '#e3e3e3',
             }}
           >
             <FileSpreadsheet className="w-4 h-4" />
@@ -173,13 +173,13 @@ const Users = () => {
           {showColumnMenu && (
             <div
               className="absolute top-full left-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-lg p-2 z-10"
-              style={{ borderColor: "#e3e3e3", borderRadius: "8px" }}
+              style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}
             >
               {columns.map((col) => (
                 <label
                   key={col.id}
                   className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-muted rounded"
-                  style={{ fontFamily: "Poppins" }}
+                  style={{ fontFamily: 'Poppins' }}
                 >
                   <input
                     type="checkbox"
@@ -192,7 +192,7 @@ const Users = () => {
                       )
                     }
                     className="rounded border-gray-300"
-                    style={{ accentColor: "#f30100" }}
+                    style={{ accentColor: '#f30100' }}
                   />
                   {col.label}
                 </label>
@@ -206,9 +206,9 @@ const Users = () => {
             onClick={() => setShowExportMenu(!showExportMenu)}
             className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg bg-card hover:bg-muted transition-colors"
             style={{
-              fontFamily: "Poppins",
-              borderRadius: "8px",
-              borderColor: "#e3e3e3",
+              fontFamily: 'Poppins',
+              borderRadius: '8px',
+              borderColor: '#e3e3e3',
             }}
           >
             <FileText className="w-4 h-4" />
@@ -218,13 +218,13 @@ const Users = () => {
           {showExportMenu && (
             <div
               className="absolute top-full left-0 mt-1 w-32 bg-card border border-border rounded-lg shadow-lg p-1 z-10"
-              style={{ borderColor: "#e3e3e3", borderRadius: "8px" }}
+              style={{ borderColor: '#e3e3e3', borderRadius: '8px' }}
             >
-              {["Excel", "PDF", "Copy"].map((label) => (
+              {['Excel', 'PDF', 'Copy'].map((label) => (
                 <button
                   key={label}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded"
-                  style={{ fontFamily: "Poppins" }}
+                  style={{ fontFamily: 'Poppins' }}
                 >
                   {label}
                 </button>
@@ -237,8 +237,8 @@ const Users = () => {
       <Card
         className="bg-card border border-border"
         style={{
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
         }}
       >
         <CardContent className="p-0">
@@ -264,7 +264,7 @@ const Users = () => {
                     colSpan={colSpan}
                     className="text-center text-sm text-muted-foreground py-8"
                   >
-                    Loading users...
+                    <LoadingState label="Loading users..." />
                   </TableCell>
                 </TableRow>
               )}
@@ -274,9 +274,9 @@ const Users = () => {
                   <TableCell
                     colSpan={colSpan}
                     className="text-center text-sm py-8"
-                    style={{ color: "#f30100" }}
+                    style={{ color: '#f30100' }}
                   >
-                    {(error as Error)?.message || "Failed to load users"}
+                    {(error as Error)?.message || 'Failed to load users'}
                   </TableCell>
                 </TableRow>
               )}
@@ -288,8 +288,8 @@ const Users = () => {
                     className="text-center text-sm text-muted-foreground py-8"
                   >
                     {debouncedSearch
-                      ? "No users match your search."
-                      : "No users yet."}
+                      ? 'No users match your search.'
+                      : 'No users yet.'}
                   </TableCell>
                 </TableRow>
               )}
@@ -298,7 +298,7 @@ const Users = () => {
                 const name = displayName(user);
                 return (
                   <TableRow key={user.id}>
-                    {visibleColumns.includes("User") && (
+                    {visibleColumns.includes('User') && (
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
@@ -308,34 +308,34 @@ const Users = () => {
                         </div>
                       </TableCell>
                     )}
-                    {visibleColumns.includes("Email") && (
+                    {visibleColumns.includes('Email') && (
                       <TableCell className="text-muted-foreground">
-                        {user.email ?? "—"}
+                        {user.email ?? '—'}
                       </TableCell>
                     )}
-                    {visibleColumns.includes("Phone Number") && (
+                    {visibleColumns.includes('Phone Number') && (
                       <TableCell className="text-muted-foreground">
-                        {user.phoneNumber ?? "—"}
+                        {user.phoneNumber ?? '—'}
                       </TableCell>
                     )}
-                    {visibleColumns.includes("Assign Role") && (
+                    {visibleColumns.includes('Assign Role') && (
                       <TableCell>
                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
                           {displayRole(user)}
                         </span>
                       </TableCell>
                     )}
-                    {visibleColumns.includes("Status") && (
+                    {visibleColumns.includes('Status') && (
                       <TableCell>
                         <span
                           className="px-2 py-1 rounded-full text-xs font-medium"
                           style={
                             isSuspended(user)
-                              ? { backgroundColor: "#FEE2E2", color: "#B91C1C" }
-                              : { backgroundColor: "#E5F9EC", color: "#27964F" }
+                              ? { backgroundColor: '#FEE2E2', color: '#B91C1C' }
+                              : { backgroundColor: '#E5F9EC', color: '#27964F' }
                           }
                         >
-                          {isSuspended(user) ? "Suspended" : "Active"}
+                          {isSuspended(user) ? 'Suspended' : 'Active'}
                         </span>
                       </TableCell>
                     )}
@@ -416,7 +416,7 @@ const Users = () => {
       <div className="flex items-center justify-between">
         <span
           className="text-sm text-muted-foreground"
-          style={{ fontFamily: "Poppins" }}
+          style={{ fontFamily: 'Poppins' }}
         >
           {total !== null
             ? `Showing ${rangeStart}-${rangeEnd} of ${total}`
@@ -440,8 +440,8 @@ const Users = () => {
                 n === currentPage
                   ? {
                       ...pageBtnStyle,
-                      backgroundColor: "#f30100",
-                      color: "white",
+                      backgroundColor: '#f30100',
+                      color: 'white',
                     }
                   : pageBtnStyle
               }
@@ -516,7 +516,7 @@ const Users = () => {
           isOpen
           onClose={() => setDeletingUser(null)}
           endpoint={`estate/${deletingUser.id}`}
-          queryKey={["get_users"]}
+          queryKey={['get_users']}
           entity="User"
           itemName={displayName(deletingUser)}
         />
