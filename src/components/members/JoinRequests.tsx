@@ -1,3 +1,4 @@
+import LoadingState from '@/components/ui/LoadingState';
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Button from "@/components/ui/Button";
@@ -183,6 +184,7 @@ const RequestAction = ({ request, onView }: RequestActionProps) => {
           <Button
             type="button"
             isLoading={isSubmitting}
+            className={actionType === "MOVE_OUT" ? "bg-brand-text text-white hover:bg-brand-text/90" : undefined}
             disabled={!actionType || isSubmitting}
             variant={
               actionType === "REJECT" || actionType === "MOVE_OUT"
@@ -278,7 +280,7 @@ const JoinRequests = () => {
               {isLoading && (
                 <tr>
                   <td colSpan={8} className="p-6 text-center">
-                    Loading requests...
+                    <LoadingState label="Loading requests..." />
                   </td>
                 </tr>
               )}

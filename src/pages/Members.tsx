@@ -1,3 +1,6 @@
+import LoadingState from '@/components/ui/LoadingState';
+import Select from '@/components/ui/Select';
+import { confirmAction, showAlert } from '@/lib/dialog';
 import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -85,7 +88,7 @@ const MemberActions = ({
     close: () => void,
     confirm = false
   ) => {
-    if (confirm && !window.confirm(`${label} this member?`)) return;
+    if (confirm && !(await confirmAction(`${label} this member?`))) return;
     close();
     onStatusChange(memberId, { phase: "pending", message: label });
     try {
@@ -265,7 +268,7 @@ const Members = () => {
   // Export members to Excel.
   const exportExcel = () => {
     if (!currentMembers.length) {
-      alert("There are no members to export.");
+      void showAlert("There are no members to export.");
       return;
     }
 
@@ -289,14 +292,14 @@ const Members = () => {
   // Export members to PDF using the browser's print dialog.
   const exportPDF = () => {
     if (!currentMembers.length) {
-      alert("There are no members to export.");
+      void showAlert("There are no members to export.");
       return;
     }
 
     const printWindow = window.open("", "_blank");
 
     if (!printWindow) {
-      alert("Please allow pop-ups to export the PDF.");
+      void showAlert("Please allow pop-ups to export the PDF.");
       return;
     }
 
@@ -424,7 +427,7 @@ const Members = () => {
   // Copy members to clipboard.
   const copyMembers = async () => {
     if (!currentMembers.length) {
-      alert("There are no members to copy.");
+      void showAlert("There are no members to copy.");
       return;
     }
 
@@ -460,10 +463,10 @@ const Members = () => {
         }
       }
 
-      alert("Members copied successfully!");
+      void showAlert("Members copied successfully!");
     } catch (error) {
       console.error("Copy error:", error);
-      alert("Unable to copy members. Please try again.");
+      void showAlert("Unable to copy members. Please try again.");
     }
 
     setShowExportMenu(false);
@@ -658,7 +661,7 @@ const Members = () => {
                       className="py-12 text-center text-[#727272]"
                     >
                       {isLoading
-                        ? "Loading members..."
+                        ? <LoadingState label="Loading members..." />
                         : isError
                         ? "Could not load members."
                         : "No members found."}
@@ -777,7 +780,7 @@ const Members = () => {
           >
             Show
           </span>
-          <select
+          <Select
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));
@@ -793,7 +796,7 @@ const Members = () => {
             <option value={10}>10</option>
             <option value={25}>25</option>
             <option value={50}>50</option>
-          </select>
+          </Select>
           <span
             className="text-sm text-muted-foreground"
             style={{ fontFamily: "Poppins" }}

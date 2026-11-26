@@ -1,19 +1,19 @@
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
-import Modal from "@/components/ui/Modal";
-import { useUpdateRepairStatus } from "@/api/api_controllers/repairsController";
+import Select from '@/components/ui/Select';
+import { useState } from 'react';
+import Modal from '@/components/ui/Modal';
+import { useUpdateRepairStatus } from '@/api/api_controllers/repairsController';
 
 // Confirm the real values with your backend
-export const REPAIR_STATUSES = ["PENDING", "APPROVED", "COMPLETED"];
+export const REPAIR_STATUSES = ['PENDING', 'APPROVED', 'COMPLETED'];
 
 const prettyLabel = (value?: string | null) =>
   value
     ? value
         .toLowerCase()
-        .split("_")
+        .split('_')
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" ")
-    : "—";
+        .join(' ')
+    : '—';
 
 interface UpdateRepairStatusModalProps {
   isOpen: boolean;
@@ -50,7 +50,7 @@ const UpdateRepairStatusModal = ({
     }
   };
 
-  const canSubmit = status !== "" && status !== repair.status && !isLoading;
+  const canSubmit = status !== '' && status !== repair.status && !isLoading;
 
   return (
     <Modal
@@ -62,14 +62,14 @@ const UpdateRepairStatusModal = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         <p
           className="text-sm"
-          style={{ fontFamily: "Poppins", color: "#4c4c4c" }}
+          style={{ fontFamily: 'Poppins', color: '#4c4c4c' }}
         >
-          Change the status of this{" "}
-          <span className="font-medium" style={{ color: "#393939" }}>
+          Change the status of this{' '}
+          <span className="font-medium" style={{ color: '#393939' }}>
             {prettyLabel(repair.issueType)}
-          </span>{" "}
-          request. It is currently{" "}
-          <span className="font-medium" style={{ color: "#393939" }}>
+          </span>{' '}
+          request. It is currently{' '}
+          <span className="font-medium" style={{ color: '#393939' }}>
             {prettyLabel(repair.status)}
           </span>
           .
@@ -79,20 +79,20 @@ const UpdateRepairStatusModal = ({
           <label
             htmlFor="repair-status"
             className="block text-sm font-medium mb-2"
-            style={{ fontFamily: "Poppins", color: "#4c4c4c" }}
+            style={{ fontFamily: 'Poppins', color: '#4c4c4c' }}
           >
             Status
           </label>
           <div className="relative">
-            <select
+            <Select
               id="repair-status"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               className="w-full px-4 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-[#f30100]/20 appearance-none"
               style={{
-                fontFamily: "Poppins",
-                borderColor: "#e3e3e3",
-                height: "48px",
+                fontFamily: 'Poppins',
+                borderColor: '#e3e3e3',
+                height: '48px',
               }}
             >
               {options.map((s) => (
@@ -100,8 +100,7 @@ const UpdateRepairStatusModal = ({
                   {prettyLabel(s)}
                 </option>
               ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </Select>
           </div>
         </div>
 
@@ -112,11 +111,11 @@ const UpdateRepairStatusModal = ({
             disabled={isLoading}
             className="px-4 py-2 text-sm border transition-colors hover:bg-muted disabled:opacity-60"
             style={{
-              fontFamily: "Poppins",
-              borderRadius: "8px",
-              borderColor: "#e3e3e3",
-              color: "#4c4c4c",
-              backgroundColor: "transparent",
+              fontFamily: 'Poppins',
+              borderRadius: '8px',
+              borderColor: '#e3e3e3',
+              color: '#4c4c4c',
+              backgroundColor: 'transparent',
             }}
           >
             Cancel
@@ -126,13 +125,13 @@ const UpdateRepairStatusModal = ({
             disabled={!canSubmit}
             className="px-4 py-2 text-sm text-white transition-colors disabled:opacity-60"
             style={{
-              fontFamily: "Poppins",
-              borderRadius: "8px",
-              backgroundColor: "#f30100",
-              border: "none",
+              fontFamily: 'Poppins',
+              borderRadius: '8px',
+              backgroundColor: '#f30100',
+              border: 'none',
             }}
           >
-            {isLoading ? "Saving..." : "Update Status"}
+            {isLoading ? 'Saving...' : 'Update Status'}
           </button>
         </div>
       </form>

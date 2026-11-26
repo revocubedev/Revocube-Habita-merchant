@@ -1,16 +1,15 @@
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
-import Modal from "@/components/ui/Modal";
+import Select from '@/components/ui/Select';
+import { useState } from 'react';
+import Modal from '@/components/ui/Modal';
 import {
   useCreateUser,
   useUpdateUser,
-} from "@/api/api_controllers/userController";
+} from '@/api/api_controllers/userController';
 import {
   extractRoles,
   useGetAdminRoles,
-} from "@/api/api_controllers/adminController";
-import { prettyRole } from "@/lib/userUtilis";
-
+} from '@/api/api_controllers/adminController';
+import { prettyRole } from '@/lib/userUtilis';
 
 export interface UserRecord {
   id: string;
@@ -34,26 +33,26 @@ interface UserModalProps {
 }
 
 const inputClass =
-  "w-full px-4 rounded-lg border focus:outline-none focus:ring-2 focus:ring-[#f30100]/20 transition-colors";
+  'w-full px-4 rounded-lg border focus:outline-none focus:ring-2 focus:ring-[#f30100]/20 transition-colors';
 const inputStyle = {
-  fontFamily: "Poppins",
-  borderColor: "#e3e3e3",
-  height: "48px",
+  fontFamily: 'Poppins',
+  borderColor: '#e3e3e3',
+  height: '48px',
 };
-const labelStyle = { fontFamily: "Poppins", color: "#4c4c4c" };
+const labelStyle = { fontFamily: 'Poppins', color: '#4c4c4c' };
 
 const initialRoleId = (user?: UserRecord | null) =>
   user?.roleId ??
   user?.roles?.[0]?.id ??
-  (typeof user?.role === "object" ? user.role?.id : undefined) ??
-  "";
+  (typeof user?.role === 'object' ? user.role?.id : undefined) ??
+  '';
 
 const splitName = (user?: UserRecord | null) => {
   if (user?.firstName || user?.lastName) {
-    return { first: user.firstName ?? "", last: user.lastName ?? "" };
+    return { first: user.firstName ?? '', last: user.lastName ?? '' };
   }
-  const [first = "", ...rest] = (user?.name ?? "").split(" ");
-  return { first, last: rest.join(" ") };
+  const [first = '', ...rest] = (user?.name ?? '').split(' ');
+  return { first, last: rest.join(' ') };
 };
 
 const UserModal = ({ isOpen, onClose, user }: UserModalProps) => {
@@ -62,10 +61,10 @@ const UserModal = ({ isOpen, onClose, user }: UserModalProps) => {
 
   const [firstName, setFirstName] = useState(names.first);
   const [lastName, setLastName] = useState(names.last);
-  const [email, setEmail] = useState(user?.email ?? "");
-  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber ?? "");
+  const [email, setEmail] = useState(user?.email ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber ?? '');
   const [roleId, setRoleId] = useState(initialRoleId(user));
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState('');
 
   const { data: rolesData, isLoading: rolesLoading } = useGetAdminRoles({
     page: 1,
@@ -109,14 +108,14 @@ const UserModal = ({ isOpen, onClose, user }: UserModalProps) => {
     isEdit &&
     firstName.trim() === names.first &&
     lastName.trim() === names.last &&
-    phoneNumber.trim() === (user!.phoneNumber ?? "") &&
+    phoneNumber.trim() === (user!.phoneNumber ?? '') &&
     roleId === initialRoleId(user);
 
   const canSubmit =
-    firstName.trim() !== "" &&
-    lastName.trim() !== "" &&
-    email.trim() !== "" &&
-    roleId !== "" &&
+    firstName.trim() !== '' &&
+    lastName.trim() !== '' &&
+    email.trim() !== '' &&
+    roleId !== '' &&
     (isEdit || password.length >= 8) &&
     !unchanged &&
     !isLoading;
@@ -125,7 +124,7 @@ const UserModal = ({ isOpen, onClose, user }: UserModalProps) => {
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={isEdit ? "Edit User" : "Create User"}
+      title={isEdit ? 'Edit User' : 'Create User'}
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -219,7 +218,7 @@ const UserModal = ({ isOpen, onClose, user }: UserModalProps) => {
             Assign Role
           </label>
           <div className="relative">
-            <select
+            <Select
               id="user-role"
               value={roleId}
               onChange={(e) => setRoleId(e.target.value)}
@@ -229,15 +228,14 @@ const UserModal = ({ isOpen, onClose, user }: UserModalProps) => {
               style={inputStyle}
             >
               <option value="">
-                {rolesLoading ? "Loading roles..." : "Select role..."}
+                {rolesLoading ? 'Loading roles...' : 'Select role...'}
               </option>
               {roles.map((role) => (
                 <option key={role.id} value={role.id}>
                   {prettyRole(role.name)}
                 </option>
               ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </Select>
           </div>
         </div>
 
@@ -272,11 +270,11 @@ const UserModal = ({ isOpen, onClose, user }: UserModalProps) => {
             disabled={isLoading}
             className="px-4 py-2 text-sm border transition-colors hover:bg-muted disabled:opacity-60"
             style={{
-              fontFamily: "Poppins",
-              borderRadius: "8px",
-              borderColor: "#e3e3e3",
-              color: "#4c4c4c",
-              backgroundColor: "transparent",
+              fontFamily: 'Poppins',
+              borderRadius: '8px',
+              borderColor: '#e3e3e3',
+              color: '#4c4c4c',
+              backgroundColor: 'transparent',
             }}
           >
             Cancel
@@ -286,19 +284,19 @@ const UserModal = ({ isOpen, onClose, user }: UserModalProps) => {
             disabled={!canSubmit}
             className="px-4 py-2 text-sm text-white transition-colors disabled:opacity-60"
             style={{
-              fontFamily: "Poppins",
-              borderRadius: "8px",
-              backgroundColor: "#f30100",
-              border: "none",
+              fontFamily: 'Poppins',
+              borderRadius: '8px',
+              backgroundColor: '#f30100',
+              border: 'none',
             }}
           >
             {isLoading
               ? isEdit
-                ? "Saving..."
-                : "Creating..."
+                ? 'Saving...'
+                : 'Creating...'
               : isEdit
-              ? "Save Changes"
-              : "Create User"}
+                ? 'Save Changes'
+                : 'Create User'}
           </button>
         </div>
       </form>

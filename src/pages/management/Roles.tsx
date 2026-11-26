@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
-import { Plus, Search, MoreHorizontal, Edit, Trash2 } from "lucide-react";
-import Card from "@/components/ui/Card";
-import { CardContent } from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
+import LoadingState from '@/components/ui/LoadingState';
+import { useState, useEffect } from 'react';
+import { Plus, Search, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import Card from '@/components/ui/Card';
+import { CardContent } from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import {
   Table,
   TableHeader,
@@ -11,17 +12,16 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from "@/components/ui/Table";
-import DeleteModal from "@/components/ui/DeleteModal";
+} from '@/components/ui/Table';
+import DeleteModal from '@/components/ui/DeleteModal';
 import {
   useGetAdminRoles,
   extractRoles,
-} from "@/api/api_controllers/adminController";
-import RoleModal, { type Role } from "@/components/portal/RolesModal";
-
+} from '@/api/api_controllers/adminController';
+import RoleModal, { type Role } from '@/components/portal/RolesModal';
 
 const Roles = () => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -36,19 +36,19 @@ const Roles = () => {
   const roles: Role[] = extractRoles(data);
 
   const filteredRoles = roles.filter((role) =>
-    (role.name ?? "").toLowerCase().includes(searchQuery.toLowerCase())
+    (role.name ?? '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest(".action-menu-container")) {
+      if (!target.closest('.action-menu-container')) {
         setActionMenuId(null);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const permissionCount = (role: Role) =>
@@ -73,10 +73,10 @@ const Roles = () => {
           onClick={() => setIsCreateOpen(true)}
           className="text-sm text-white transition-colors"
           style={{
-            fontFamily: "Poppins",
-            borderRadius: "8px",
-            backgroundColor: "#f30100",
-            border: "none",
+            fontFamily: 'Poppins',
+            borderRadius: '8px',
+            backgroundColor: '#f30100',
+            border: 'none',
           }}
         >
           Create Role
@@ -101,7 +101,7 @@ const Roles = () => {
                     colSpan={4}
                     className="text-center text-sm text-muted-foreground py-8"
                   >
-                    Loading roles...
+                    <LoadingState label="Loading roles..." />
                   </TableCell>
                 </TableRow>
               )}
@@ -111,9 +111,9 @@ const Roles = () => {
                   <TableCell
                     colSpan={4}
                     className="text-center text-sm py-8"
-                    style={{ color: "#f30100" }}
+                    style={{ color: '#f30100' }}
                   >
-                    {(error as Error)?.message || "Failed to load roles"}
+                    {(error as Error)?.message || 'Failed to load roles'}
                   </TableCell>
                 </TableRow>
               )}
@@ -125,8 +125,8 @@ const Roles = () => {
                     className="text-center text-sm text-muted-foreground py-8"
                   >
                     {searchQuery
-                      ? "No roles match your search."
-                      : "No roles yet."}
+                      ? 'No roles match your search.'
+                      : 'No roles yet.'}
                   </TableCell>
                 </TableRow>
               )}
@@ -157,13 +157,13 @@ const Roles = () => {
                         <div
                           className="absolute right-0 top-full mt-1 w-32 bg-white border border-border rounded-lg shadow-lg z-10"
                           style={{
-                            fontFamily: "Poppins",
-                            borderColor: "#e3e3e3",
+                            fontFamily: 'Poppins',
+                            borderColor: '#e3e3e3',
                           }}
                         >
                           <button
                             className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2"
-                            style={{ fontFamily: "Poppins" }}
+                            style={{ fontFamily: 'Poppins' }}
                             onClick={() => {
                               setActionMenuId(null);
                               setEditingRole(role);
@@ -174,7 +174,7 @@ const Roles = () => {
                           </button>
                           <button
                             className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2 text-danger"
-                            style={{ fontFamily: "Poppins", color: "#f30100" }}
+                            style={{ fontFamily: 'Poppins', color: '#f30100' }}
                             onClick={() => {
                               setActionMenuId(null);
                               setDeletingRole(role);
@@ -213,7 +213,7 @@ const Roles = () => {
           isOpen
           onClose={() => setDeletingRole(null)}
           endpoint={`roles/${deletingRole.id}`}
-          queryKey={["get_admin_roles"]}
+          queryKey={['get_admin_roles']}
           entity="Role"
           itemName={deletingRole.name}
         />
