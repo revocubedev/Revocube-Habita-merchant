@@ -1,8 +1,11 @@
-import { useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
-import Card, { CardContent } from "@/components/ui/Card";
-import { BILLING_CYCLES, BillingCycle, useInitializePayment } from "@/api/api_controllers/paymentController";
-
+import Select from '@/components/ui/Select';
+import { useMemo, useState } from 'react';
+import Card, { CardContent } from '@/components/ui/Card';
+import {
+  BILLING_CYCLES,
+  BillingCycle,
+  useInitializePayment,
+} from '@/api/api_controllers/paymentController';
 
 interface StoredEstate {
   id: string;
@@ -15,27 +18,27 @@ interface StoredEstate {
 // Saved by the login page: the estates the signed-in manager belongs to
 const readEstates = (): StoredEstate[] => {
   try {
-    const raw = localStorage.getItem("estates");
+    const raw = localStorage.getItem('estates');
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed)
-      ? parsed.filter((e) => e && typeof e.id === "string")
+      ? parsed.filter((e) => e && typeof e.id === 'string')
       : [];
   } catch {
     return [];
   }
 };
 
-const labelStyle = { fontFamily: "Poppins", color: "#4c4c4c" };
+const labelStyle = { fontFamily: 'Poppins', color: '#4c4c4c' };
 
 const InitiatePayment = () => {
   const estates = useMemo(readEstates, []);
-  const activeCode = localStorage.getItem("code");
+  const activeCode = localStorage.getItem('code');
 
   const [estateId, setEstateId] = useState(
     () =>
-      (estates.find((e) => e.estateCode === activeCode) ?? estates[0])?.id ?? ""
+      (estates.find((e) => e.estateCode === activeCode) ?? estates[0])?.id ?? ''
   );
-  const [cycle, setCycle] = useState<BillingCycle>("MONTHLY");
+  const [cycle, setCycle] = useState<BillingCycle>('MONTHLY');
   const [redirecting, setRedirecting] = useState(false);
 
   const { initializePayment, isLoading } = useInitializePayment();
@@ -53,12 +56,12 @@ const InitiatePayment = () => {
       });
 
       if (!result?.authorizationUrl) {
-        throw new Error("Payment authorization URL was not returned.");
+        throw new Error('Payment authorization URL was not returned.');
       }
 
       try {
         if (result.reference) {
-          sessionStorage.setItem("pendingPaymentReference", result.reference);
+          sessionStorage.setItem('pendingPaymentReference', result.reference);
         }
       } catch {
         // Storage unavailable; continue using the authorization URL.
@@ -67,16 +70,16 @@ const InitiatePayment = () => {
       setRedirecting(true);
       window.location.assign(result.authorizationUrl);
     } catch (error) {
-      console.error("Payment initialization failed:", error);
+      console.error('Payment initialization failed:', error);
       setRedirecting(false);
     }
   };
 
   return (
-    <div className="space-y-4" style={{ fontFamily: "Poppins" }}>
+    <div className="space-y-4" style={{ fontFamily: 'Poppins' }}>
       <h1
         className="text-2xl font-display font-semibold text-foreground"
-        style={{ fontWeight: 600, color: "#393939" }}
+        style={{ fontWeight: 600, color: '#393939' }}
       >
         Subscription Payment
       </h1>
@@ -84,13 +87,13 @@ const InitiatePayment = () => {
       <Card
         className="bg-card border border-border max-w-xl"
         style={{
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
         }}
       >
         <CardContent className="p-6 space-y-6">
           {estates.length === 0 ? (
-            <p className="text-sm" style={{ color: "#f30100" }}>
+            <p className="text-sm" style={{ color: '#f30100' }}>
               No estate found for your account. Please log out and sign in
               again.
             </p>
@@ -107,22 +110,22 @@ const InitiatePayment = () => {
                 {estates.length === 1 ? (
                   <p
                     className="text-sm font-medium"
-                    style={{ color: "#393939" }}
+                    style={{ color: '#393939' }}
                   >
                     {estate?.name ?? estate?.estateCode}
                   </p>
                 ) : (
                   <div className="relative">
-                    <select
+                    <Select
                       id="payment-estate"
                       value={estateId}
                       onChange={(e) => setEstateId(e.target.value)}
                       disabled={busy}
                       className="w-full px-4 rounded-lg border bg-background appearance-none focus:outline-none focus:ring-2 focus:ring-[#f30100]/20 disabled:opacity-60"
                       style={{
-                        fontFamily: "Poppins",
-                        borderColor: "#e3e3e3",
-                        height: "48px",
+                        fontFamily: 'Poppins',
+                        borderColor: '#e3e3e3',
+                        height: '48px',
                       }}
                     >
                       {estates.map((e) => (
@@ -130,8 +133,7 @@ const InitiatePayment = () => {
                           {e.name ?? e.estateCode}
                         </option>
                       ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </Select>
                   </div>
                 )}
                 {estate?.package?.name && (
@@ -165,10 +167,10 @@ const InitiatePayment = () => {
                         onClick={() => setCycle(option.value)}
                         className="px-4 py-3 text-sm rounded-lg border transition-colors disabled:opacity-60"
                         style={{
-                          fontFamily: "Poppins",
-                          borderColor: selected ? "#f30100" : "#e3e3e3",
-                          backgroundColor: selected ? "#FFF0F0" : "white",
-                          color: selected ? "#f30100" : "#4c4c4c",
+                          fontFamily: 'Poppins',
+                          borderColor: selected ? '#f30100' : '#e3e3e3',
+                          backgroundColor: selected ? '#FFF0F0' : 'white',
+                          color: selected ? '#f30100' : '#4c4c4c',
                           fontWeight: selected ? 600 : 400,
                         }}
                       >
@@ -190,19 +192,19 @@ const InitiatePayment = () => {
                 disabled={!estateId || busy}
                 className="w-full text-white transition-colors disabled:opacity-60"
                 style={{
-                  borderRadius: "12px",
-                  backgroundColor: "#f30100",
-                  border: "none",
-                  height: "48px",
-                  fontSize: "16px",
+                  borderRadius: '12px',
+                  backgroundColor: '#f30100',
+                  border: 'none',
+                  height: '48px',
+                  fontSize: '16px',
                   fontWeight: 500,
                 }}
               >
                 {redirecting
-                  ? "Redirecting to checkout..."
+                  ? 'Redirecting to checkout...'
                   : isLoading
-                  ? "Starting payment..."
-                  : "Proceed to payment"}
+                    ? 'Starting payment...'
+                    : 'Proceed to payment'}
               </button>
             </>
           )}

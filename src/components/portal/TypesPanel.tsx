@@ -1,6 +1,8 @@
-import { useState } from "react";
-import { Search, Edit, Trash2 } from "lucide-react";
-import Card, { CardContent } from "@/components/ui/Card";
+import LoadingState from '@/components/ui/LoadingState';
+import Select from '@/components/ui/Select';
+import { useState } from 'react';
+import { Search, Edit, Trash2 } from 'lucide-react';
+import Card, { CardContent } from '@/components/ui/Card';
 import {
   Table,
   TableHeader,
@@ -8,17 +10,17 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from "@/components/ui/Table";
-import RowActionsMenu, { RowAction } from "@/components/ui/RowActionsMenu";
-import DeleteModal from "@/components/ui/DeleteModal";
+} from '@/components/ui/Table';
+import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
+import DeleteModal from '@/components/ui/DeleteModal';
 
 import {
   useGetTypesByCategory,
   extractTypes,
   type TypeCategory,
   type TypeOption,
-} from "@/api/api_controllers/types";
-import TypeModal from "./TypeModal";
+} from '@/api/api_controllers/types';
+import TypeModal from './TypeModal';
 
 interface TypesPanelProps {
   category: TypeCategory;
@@ -26,15 +28,15 @@ interface TypesPanelProps {
 }
 
 const pageBtn =
-  "px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50";
+  'px-3 py-1.5 text-sm border border-border rounded bg-card hover:bg-muted disabled:opacity-50';
 const pageBtnStyle = {
-  fontFamily: "Poppins",
-  borderRadius: "6px",
-  borderColor: "#e3e3e3",
+  fontFamily: 'Poppins',
+  borderRadius: '6px',
+  borderColor: '#e3e3e3',
 };
 
 const TypesPanel = ({ category, label }: TypesPanelProps) => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -67,7 +69,7 @@ const TypesPanel = ({ category, label }: TypesPanelProps) => {
       <div className="flex items-center justify-between">
         <h2
           className="text-[16px] font-display font-medium text-foreground"
-          style={{ fontFamily: "Poppins", fontWeight: 500, color: "#4c4c4c" }}
+          style={{ fontFamily: 'Poppins', fontWeight: 500, color: '#4c4c4c' }}
         >
           {label} Types
         </h2>
@@ -75,10 +77,10 @@ const TypesPanel = ({ category, label }: TypesPanelProps) => {
           onClick={() => setIsCreateOpen(true)}
           className="text-sm text-white transition-colors flex items-center gap-2 px-4 py-2"
           style={{
-            fontFamily: "Poppins",
-            borderRadius: "8px",
-            backgroundColor: "#f30100",
-            border: "none",
+            fontFamily: 'Poppins',
+            borderRadius: '8px',
+            backgroundColor: '#f30100',
+            border: 'none',
           }}
         >
           + Create {label} Type
@@ -88,8 +90,8 @@ const TypesPanel = ({ category, label }: TypesPanelProps) => {
       <Card
         className="bg-card border border-border"
         style={{
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
         }}
       >
         <CardContent className="p-4">
@@ -99,7 +101,7 @@ const TypesPanel = ({ category, label }: TypesPanelProps) => {
               <input
                 placeholder="Search types..."
                 className="w-full pl-9 pr-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-brand-text/20 transition-colors"
-                style={{ fontFamily: "Poppins", borderColor: "#e3e3e3" }}
+                style={{ fontFamily: 'Poppins', borderColor: '#e3e3e3' }}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -127,7 +129,7 @@ const TypesPanel = ({ category, label }: TypesPanelProps) => {
                     colSpan={4}
                     className="text-center text-sm text-muted-foreground py-8"
                   >
-                    Loading types...
+                    <LoadingState label="Loading types..." />
                   </TableCell>
                 </TableRow>
               )}
@@ -137,9 +139,9 @@ const TypesPanel = ({ category, label }: TypesPanelProps) => {
                   <TableCell
                     colSpan={4}
                     className="text-center text-sm py-8"
-                    style={{ color: "#f30100" }}
+                    style={{ color: '#f30100' }}
                   >
-                    {(error as Error)?.message || "Failed to load types"}
+                    {(error as Error)?.message || 'Failed to load types'}
                   </TableCell>
                 </TableRow>
               )}
@@ -151,7 +153,7 @@ const TypesPanel = ({ category, label }: TypesPanelProps) => {
                     className="text-center text-sm text-muted-foreground py-8"
                   >
                     {query
-                      ? "No types match your search."
+                      ? 'No types match your search.'
                       : `No ${label.toLowerCase()} types yet.`}
                   </TableCell>
                 </TableRow>
@@ -168,11 +170,11 @@ const TypesPanel = ({ category, label }: TypesPanelProps) => {
                       className="px-2 py-1 rounded-full text-xs font-medium"
                       style={
                         t.isActive
-                          ? { backgroundColor: "#E5F9EC", color: "#27964F" }
-                          : { backgroundColor: "#F3F4F6", color: "#6B7280" }
+                          ? { backgroundColor: '#E5F9EC', color: '#27964F' }
+                          : { backgroundColor: '#F3F4F6', color: '#6B7280' }
                       }
                     >
-                      {t.isActive ? "Active" : "Inactive"}
+                      {t.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
@@ -213,11 +215,11 @@ const TypesPanel = ({ category, label }: TypesPanelProps) => {
         <div className="flex items-center gap-2">
           <span
             className="text-sm text-muted-foreground"
-            style={{ fontFamily: "Poppins" }}
+            style={{ fontFamily: 'Poppins' }}
           >
             Show
           </span>
-          <select
+          <Select
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));
@@ -229,10 +231,10 @@ const TypesPanel = ({ category, label }: TypesPanelProps) => {
             <option value={10}>10</option>
             <option value={25}>25</option>
             <option value={50}>50</option>
-          </select>
+          </Select>
           <span
             className="text-sm text-muted-foreground"
-            style={{ fontFamily: "Poppins" }}
+            style={{ fontFamily: 'Poppins' }}
           >
             entries per page
           </span>
@@ -256,9 +258,9 @@ const TypesPanel = ({ category, label }: TypesPanelProps) => {
                 n === safePage
                   ? {
                       ...pageBtnStyle,
-                      backgroundColor: "#f30100",
-                      borderColor: "#f30100",
-                      color: "white",
+                      backgroundColor: '#f30100',
+                      borderColor: '#f30100',
+                      color: 'white',
                     }
                   : pageBtnStyle
               }
@@ -303,7 +305,7 @@ const TypesPanel = ({ category, label }: TypesPanelProps) => {
           isOpen
           onClose={() => setDeletingType(null)}
           endpoint={`types/${deletingType.id}`} // confirm in Postman
-          queryKey={["get_types_by_category"]}
+          queryKey={['get_types_by_category']}
           entity={`${label} Type`}
           itemName={deletingType.label}
         />

@@ -1,5 +1,12 @@
+import Select from '@/components/ui/Select';
 import { useState } from 'react';
-import { User, Shield, Lock, CreditCard, ChevronDown, ShieldCheck } from 'lucide-react';
+import {
+  User,
+  Shield,
+  Lock,
+  CreditCard,
+  ShieldCheck,
+} from 'lucide-react';
 import { useGetAdminRoles } from '@/api/api_controllers/adminController';
 import { useInviteAdmin } from '@/api/api_controllers/userController';
 import ProfileTab from '@/components/portal/ProfileTab';
@@ -12,20 +19,20 @@ const Settings = () => {
   const [fullName, setFullName] = useState('');
   // const [currentPage] = useState(1);
   const [email, setEmail] = useState('');
-  const [adminRole, setAdminRole] = useState(""); // selected role id
+  const [adminRole, setAdminRole] = useState(''); // selected role id
 
   const { data: rolesData, isLoading: rolesLoading } = useGetAdminRoles({
     page: 1,
     perPage: 100,
-    enabled: activeTab === "Admin Management",
+    enabled: activeTab === 'Admin Management',
   });
 
   const { inviteAdmin, isLoading } = useInviteAdmin();
 
   const canInvite =
-    fullName.trim() !== "" &&
-    email.trim() !== "" &&
-    adminRole !== "" &&
+    fullName.trim() !== '' &&
+    email.trim() !== '' &&
+    adminRole !== '' &&
     !isLoading;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,11 +44,11 @@ const Settings = () => {
         email: email.trim(),
         roleId: adminRole,
         firstName,
-        lastName: rest.join(" "),
+        lastName: rest.join(' '),
       });
-      setFullName("");
-      setEmail("");
-      setAdminRole("");
+      setFullName('');
+      setEmail('');
+      setAdminRole('');
     } catch {
       // useApiManager already toasted the error; keep the form filled
     }
@@ -59,14 +66,39 @@ const Settings = () => {
   })();
 
   const tabs = [
-    { id: 'User Profile', label: 'User Profile', description: 'User Account Profile Settings', icon: User },
-    { id: 'Admin Management', label: 'Admin Management', description: 'Admin Settings', icon: Shield },
-    { id: 'Password', label: 'Password', description: 'Password Settings', icon: Lock },
-    { id: 'Two-Factor Auth', label: 'Two-Factor Auth', description: 'Two-Factor Authentication', icon: ShieldCheck },
+    {
+      id: 'User Profile',
+      label: 'User Profile',
+      description: 'User Account Profile Settings',
+      icon: User,
+    },
+    {
+      id: 'Admin Management',
+      label: 'Admin Management',
+      description: 'Admin Settings',
+      icon: Shield,
+    },
+    {
+      id: 'Password',
+      label: 'Password',
+      description: 'Password Settings',
+      icon: Lock,
+    },
+    {
+      id: 'Two-Factor Auth',
+      label: 'Two-Factor Auth',
+      description: 'Two-Factor Authentication',
+      icon: ShieldCheck,
+    },
     // { id: 'General', label: 'General', description: 'General Settings', icon: SettingsIcon },
     // { id: 'Company', label: 'Company', description: 'Platform Settings', icon: Building },
     // { id: 'Email', label: 'Email', description: 'Email SMTP Settings', icon: Mail },
-    { id: 'Payment', label: 'Payment', description: 'Payment Settings', icon: CreditCard },
+    {
+      id: 'Payment',
+      label: 'Payment',
+      description: 'Payment Settings',
+      icon: CreditCard,
+    },
     // { id: 'Site SEO', label: 'Site SEO', description: 'Site SEO Settings', icon: Search },
   ];
 
@@ -75,7 +107,7 @@ const Settings = () => {
       {/* Page Heading */}
       <h1
         className="text-2xl font-display font-semibold text-foreground"
-        style={{ fontFamily: "Poppins", fontWeight: 600, color: "#393939" }}
+        style={{ fontFamily: 'Poppins', fontWeight: 600, color: '#393939' }}
       >
         Settings
       </h1>
@@ -90,20 +122,20 @@ const Settings = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`w-full text-left px-4 py-3 transition-colors ${
-                  activeTab === tab.id ? "bg-[#FFF0F0]" : "hover:bg-muted"
+                  activeTab === tab.id ? 'bg-[#FFF0F0]' : 'hover:bg-muted'
                 }`}
-                style={{ fontFamily: "Poppins" }}
+                style={{ fontFamily: 'Poppins' }}
               >
                 <div className="flex items-start gap-3">
                   <tab.icon
                     className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-                      activeTab === tab.id ? "text-[#f30100]" : "text-gray-400"
+                      activeTab === tab.id ? 'text-[#f30100]' : 'text-gray-400'
                     }`}
                   />
                   <div className="flex-1">
                     <div
                       className={`text-sm font-medium ${
-                        activeTab === tab.id ? "text-gray-900" : "text-gray-600"
+                        activeTab === tab.id ? 'text-gray-900' : 'text-gray-600'
                       }`}
                     >
                       {tab.label}
@@ -120,38 +152,38 @@ const Settings = () => {
 
         {/* Right Content Area */}
         <div className="flex-1">
-          {activeTab === "User Profile" && (
+          {activeTab === 'User Profile' && (
             <div
               className="bg-card border border-border rounded-lg p-6"
               style={{
-                borderColor: "#e3e3e3",
-                borderRadius: "12px",
-                border: "none",
+                borderColor: '#e3e3e3',
+                borderRadius: '12px',
+                border: 'none',
               }}
             >
               <ProfileTab />
             </div>
           )}
 
-          {activeTab === "Admin Management" && (
+          {activeTab === 'Admin Management' && (
             <form
               onSubmit={handleSubmit}
               className="bg-card border border-border rounded-lg p-6"
               style={{
-                borderColor: "#e3e3e3",
-                borderRadius: "12px",
-                border: "none",
+                borderColor: '#e3e3e3',
+                borderRadius: '12px',
+                border: 'none',
               }}
             >
               <div
                 className="flex items-center gap-2 text-sm mb-6"
-                style={{ fontFamily: "Poppins" }}
+                style={{ fontFamily: 'Poppins' }}
               >
                 <span className="text-muted-foreground">Settings</span>
-                <span className="text-muted-foreground">{">"}</span>
+                <span className="text-muted-foreground">{'>'}</span>
                 <span
                   className="text-brand-text font-medium"
-                  style={{ color: "#f30100" }}
+                  style={{ color: '#f30100' }}
                 >
                   Admin Management
                 </span>
@@ -159,7 +191,7 @@ const Settings = () => {
 
               <h2
                 className="text-base font-medium mb-6"
-                style={{ fontFamily: "Poppins", color: "#393939" }}
+                style={{ fontFamily: 'Poppins', color: '#393939' }}
               >
                 Add New Admin
               </h2>
@@ -169,7 +201,7 @@ const Settings = () => {
                   <label
                     htmlFor="invite-name"
                     className="block text-sm font-medium mb-2"
-                    style={{ fontFamily: "Poppins", color: "#4c4c4c" }}
+                    style={{ fontFamily: 'Poppins', color: '#4c4c4c' }}
                   >
                     Full Name
                   </label>
@@ -182,9 +214,9 @@ const Settings = () => {
                     required
                     className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-brand-text/20"
                     style={{
-                      fontFamily: "Poppins",
-                      borderColor: "#e3e3e3",
-                      height: "40px",
+                      fontFamily: 'Poppins',
+                      borderColor: '#e3e3e3',
+                      height: '40px',
                     }}
                   />
                 </div>
@@ -193,7 +225,7 @@ const Settings = () => {
                   <label
                     htmlFor="invite-email"
                     className="block text-sm font-medium mb-2"
-                    style={{ fontFamily: "Poppins", color: "#4c4c4c" }}
+                    style={{ fontFamily: 'Poppins', color: '#4c4c4c' }}
                   >
                     Email Address
                   </label>
@@ -206,9 +238,9 @@ const Settings = () => {
                     required
                     className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-brand-text/20"
                     style={{
-                      fontFamily: "Poppins",
-                      borderColor: "#e3e3e3",
-                      height: "40px",
+                      fontFamily: 'Poppins',
+                      borderColor: '#e3e3e3',
+                      height: '40px',
                     }}
                   />
                 </div>
@@ -217,12 +249,12 @@ const Settings = () => {
                   <label
                     htmlFor="invite-role"
                     className="block text-sm font-medium mb-2"
-                    style={{ fontFamily: "Poppins", color: "#4c4c4c" }}
+                    style={{ fontFamily: 'Poppins', color: '#4c4c4c' }}
                   >
                     Admin Role
                   </label>
                   <div className="relative">
-                    <select
+                    <Select
                       id="invite-role"
                       value={adminRole}
                       onChange={(e) => setAdminRole(e.target.value)}
@@ -230,21 +262,20 @@ const Settings = () => {
                       required
                       className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-brand-text/20 appearance-none disabled:opacity-60"
                       style={{
-                        fontFamily: "Poppins",
-                        borderColor: "#e3e3e3",
-                        height: "40px",
+                        fontFamily: 'Poppins',
+                        borderColor: '#e3e3e3',
+                        height: '40px',
                       }}
                     >
                       <option value="">
-                        {rolesLoading ? "Loading roles..." : "Select role..."}
+                        {rolesLoading ? 'Loading roles...' : 'Select role...'}
                       </option>
                       {roles.map((role) => (
                         <option key={role.id} value={role.id}>
                           {role.name}
                         </option>
                       ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </Select>
                   </div>
                 </div>
               </div>
@@ -255,39 +286,37 @@ const Settings = () => {
                   disabled={!canInvite}
                   className="text-sm text-white transition-colors px-6 py-2 disabled:opacity-60"
                   style={{
-                    fontFamily: "Poppins",
-                    borderRadius: "8px",
-                    backgroundColor: "#f30100",
-                    border: "none",
-                    height: "40px",
+                    fontFamily: 'Poppins',
+                    borderRadius: '8px',
+                    backgroundColor: '#f30100',
+                    border: 'none',
+                    height: '40px',
                   }}
                 >
-                  {isLoading ? "Sending..." : "Send Invitation"}
+                  {isLoading ? 'Sending...' : 'Send Invitation'}
                 </button>
               </div>
             </form>
           )}
 
           {/* Password Settings */}
-          {activeTab === "Password" && (
+          {activeTab === 'Password' && (
             <div
               className="bg-card border border-border rounded-lg p-6"
-              style={{ borderColor: "#e3e3e3", borderRadius: "12px" }}
+              style={{ borderColor: '#e3e3e3', borderRadius: '12px' }}
             >
               <PasswordTab />
             </div>
           )}
 
           {/* Two-Factor Authentication */}
-          {activeTab === "Two-Factor Auth" && (
-            <TwoFactorTab />
-          )}
+          {activeTab === 'Two-Factor Auth' && <TwoFactorTab />}
 
           {/* Payment Settings */}
-          {activeTab === "Payment" && (
+          {activeTab === 'Payment' && (
             <div
               className="bg-card border border-border rounded-lg p-6"
-              style={{ borderColor: "#e3e3e3", borderRadius: "12px" }}
+              style={{ borderColor: '#e3e3e3', borderRadius: '12px' }}
             >
               <InitiatePayment />
             </div>

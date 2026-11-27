@@ -1,3 +1,7 @@
+import DatePicker from '@/components/ui/DatePicker';
+import LoadingState from '@/components/ui/LoadingState';
+import Select from '@/components/ui/Select';
+import AmountInput from '@/components/ui/AmountInput';
 
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Save } from 'lucide-react';
@@ -23,7 +27,6 @@ import {
   invoiceSchema,
 } from '@/lib/invoices';
 
-
 export default function InvoiceFormDrawer({
   invoice,
   onClose,
@@ -44,9 +47,9 @@ export default function InvoiceFormDrawer({
           dueDate: invoice.dueDate.slice(0, 10),
           description: invoice.description || '',
           propertyScope: invoice.propertyScope,
-          propertyIds: invoice.properties.map(p => p.id),
+          propertyIds: invoice.properties.map((p) => p.id),
           unitScope: invoice.unitScope,
-          unitIds: invoice.units.map(u => u.id),
+          unitIds: invoice.units.map((u) => u.id),
           receivingAccountId:
             invoice.receivingAccountId || invoice.receivingAccount?.id || '',
         }
@@ -80,13 +83,14 @@ export default function InvoiceFormDrawer({
   } = useGetInvoiceTypes();
   const invoiceTypes = extractTypes(invoiceTypesData);
   const selectedType = invoiceTypes.find((type) => type.id === form.typeId);
-  const currentTypeIsMissing =
-    !!form.typeId && !selectedType;
+  const currentTypeIsMissing = !!form.typeId && !selectedType;
 
   useEffect(() => {
     if (!invoice || form.typeId || !invoice.type) return;
 
-    const matchingType = invoiceTypes.find((type) => type.value === invoice.type);
+    const matchingType = invoiceTypes.find(
+      (type) => type.value === invoice.type
+    );
     if (matchingType) {
       setForm((current) => ({ ...current, typeId: matchingType.id }));
     }
@@ -96,52 +100,51 @@ export default function InvoiceFormDrawer({
 
   const save = useSaveInvoice(invoice?.id);
 
-
   const set = <K extends keyof InvoiceValues>(
     key: K,
     value: InvoiceValues[K]
-  ) => setForm(f => ({ ...f, [key]: value }));
-
+  ) => setForm((f) => ({ ...f, [key]: value }));
 
   const properties = [
     ...propertyQuery.properties,
-    ...(
-      invoice?.properties.filter(
-        p => !propertyQuery.properties.some(o => o.id === p.id)
-      ) || []
-    ),
+    ...(invoice?.properties.filter(
+      (p) => !propertyQuery.properties.some((o) => o.id === p.id)
+    ) || []),
   ];
-
 
   const units = [
     ...unitQuery.units,
-    ...(
-      invoice?.units
-        .filter(u => !unitQuery.units.some(o => o.id === u.id))
-        .map(u => ({ ...u, propertyId: u.propertyId || '' })) || []
-    ),
+    ...(invoice?.units
+      .filter((u) => !unitQuery.units.some((o) => o.id === u.id))
+      .map((u) => ({ ...u, propertyId: u.propertyId || '' })) || []),
   ];
 
-
   const eligibleUnits = units.filter(
-    u =>
+    (u) =>
       form.propertyScope === 'ENTIRE_ESTATE' ||
       form.propertyIds?.includes(u.propertyId)
   );
 
-
   const toggle = (key: 'propertyIds' | 'unitIds', id: string) => {
-    setForm(f => ({
-      ...f,
+    setForm((f) => {
+      const selectedIds =
+        key === 'propertyIds' && f.propertyScope === 'ENTIRE_ESTATE'
+          ? properties.map((p) => p.id)
+          : key === 'unitIds' && f.unitScope === 'ALL_UNITS'
+            ? eligibleUnits.map((u) => u.id)
+            : f[key] || [];
 
-      [key]: f[key]?.includes(id)
-        ? f[key]?.filter(v => v !== id)
-        : [...(f[key] || []), id],
-
-      ...(key === 'propertyIds' ? { unitIds: [] } : {}),
-    }));
+      return {
+        ...f,
+        [key]: selectedIds.includes(id)
+          ? selectedIds.filter((value) => value !== id)
+          : [...selectedIds, id],
+        ...(key === 'propertyIds'
+          ? { propertyScope: 'SELECTED_PROPERTIES' as const, unitIds: [] }
+          : { unitScope: 'SELECTED_UNITS' as const }),
+      };
+    });
   };
-
 
   const check = () => {
     const result = invoiceSchema.safeParse(form);
@@ -159,7 +162,6 @@ export default function InvoiceFormDrawer({
     return true;
   };
 
-
   const submit = async () => {
     if (!check()) return;
 
@@ -170,7 +172,6 @@ export default function InvoiceFormDrawer({
     }
   };
 
-
   const summary: Invoice = {
     ...form,
     type: selectedType?.value || invoice?.type || '',
@@ -179,19 +180,14 @@ export default function InvoiceFormDrawer({
     invoiceNumber: invoice?.invoiceNumber || '',
     status: invoice?.status || 'PENDING',
 
-    properties: properties.filter(
-      p => form.propertyIds?.includes(p.id)
-    ),
+    properties: properties.filter((p) => form.propertyIds?.includes(p.id)),
 
-    units: eligibleUnits.filter(
-      u => form.unitIds?.includes(u.id)
-    ),
+    units: eligibleUnits.filter((u) => form.unitIds?.includes(u.id)),
 
     receivingAccount:
-      accounts.find(a => a.id === form.receivingAccountId) ||
+      accounts.find((a) => a.id === form.receivingAccountId) ||
       invoice?.receivingAccount,
   };
-
 
   return (
     <Modal
@@ -199,7 +195,13 @@ export default function InvoiceFormDrawer({
       onClose={() => {
         if (!save.isLoading) onClose();
       }}
-      title={preview ? 'Invoice Preview' : invoice ? 'Edit Invoice' : 'Create Invoice'}
+      title={
+        preview
+          ? 'Invoice Preview'
+          : invoice
+            ? 'Edit Invoice'
+            : 'Create Invoice'
+      }
       variant="drawer"
       bodyClassName="p-0 flex flex-col"
     >
@@ -209,7 +211,7 @@ export default function InvoiceFormDrawer({
         ) : (
           <form
             id="invoice-form"
-            onSubmit={e => {
+            onSubmit={(e) => {
               e.preventDefault();
 
               if (check()) setPreview(true);
@@ -222,92 +224,89 @@ export default function InvoiceFormDrawer({
               </legend>
 
               <div className="grid grid-cols-2 gap-3">
-                {(['ONE_TIME_PAYMENT', 'RECURRING_PAYMENT'] as const).map(p => (
-                  <label
-                    key={p}
-                    className="flex gap-2 items-center text-sm"
-                  >
-                    <input
-                      type="radio"
-                      name="invoicePayment"
-                      className="accent-brand-text"
-                      checked={form.payment === p}
-                      onChange={() => set('payment', p)}
-                    />
-                    {invoiceLabel(p)}
-                  </label>
-                ))}
+                {(['ONE_TIME_PAYMENT', 'RECURRING_PAYMENT'] as const).map(
+                  (p) => (
+                    <label key={p} className="flex gap-2 items-center text-sm">
+                      <input
+                        type="radio"
+                        name="invoicePayment"
+                        className="accent-brand-text"
+                        checked={form.payment === p}
+                        onChange={() => set('payment', p)}
+                      />
+                      {invoiceLabel(p)}
+                    </label>
+                  )
+                )}
               </div>
             </fieldset>
 
-
             <Field label="Type">
-              <select
+              <Select
                 className={inputCls}
                 value={form.typeId}
                 required
-                disabled={loadingInvoiceTypes || (invoiceTypes.length === 0 && !form.typeId)}
-                onChange={e => set('typeId', e.target.value)}
+                disabled={
+                  loadingInvoiceTypes ||
+                  (invoiceTypes.length === 0 && !form.typeId)
+                }
+                onChange={(e) => set('typeId', e.target.value)}
               >
                 <option value="">
                   {loadingInvoiceTypes
                     ? 'Loading invoice types...'
                     : invoiceTypesError
-                    ? 'Could not load invoice types'
-                    : invoiceTypes.length === 0
-                    ? 'No invoice types available'
-                    : 'Select invoice type'}
+                      ? 'Could not load invoice types'
+                      : invoiceTypes.length === 0
+                        ? 'No invoice types available'
+                        : 'Select invoice type'}
                 </option>
                 {currentTypeIsMissing && (
-                  <option value={form.typeId}>{invoiceLabel(invoice?.type || '')}</option>
+                  <option value={form.typeId}>
+                    {invoiceLabel(invoice?.type || '')}
+                  </option>
                 )}
                 {invoiceTypes.map((type) => (
                   <option key={type.id} value={type.id}>
                     {type.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
 
-
             <Field label="Property">
-              <select
+              <Select
                 className={inputCls}
                 value={form.propertyScope}
-                onChange={e =>
-                  setForm(f => ({
+                onChange={(e) =>
+                  setForm((f) => ({
                     ...f,
-                    propertyScope: e.target.value as InvoiceValues['propertyScope'],
+                    propertyScope: e.target
+                      .value as InvoiceValues['propertyScope'],
                     propertyIds: [],
                     unitIds: [],
                   }))
                 }
               >
-                <option value="ENTIRE_ESTATE">
-                  Entire Estate
-                </option>
+                <option value="ENTIRE_ESTATE">Entire Estate</option>
 
-                <option value="SELECTED_PROPERTIES">
-                  Selected Properties
-                </option>
-              </select>
+                <option value="SELECTED_PROPERTIES">Selected Properties</option>
+              </Select>
             </Field>
 
-
-            {form.propertyScope === 'SELECTED_PROPERTIES' && (
               <div className="space-y-2">
                 <input
                   aria-label="Search properties"
                   className={inputCls}
                   placeholder="Search properties"
                   value={propertySearch}
-                  onChange={e => setPropertySearch(e.target.value)}
+                  onChange={(e) => setPropertySearch(e.target.value)}
                 />
 
                 <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
                   {propertyQuery.isLoading && (
                     <p className="text-sm">
-                      Loading properties…
+                      <LoadingState label="Loading properties…" />
                     </p>
                   )}
 
@@ -322,12 +321,12 @@ export default function InvoiceFormDrawer({
                   )}
 
                   {properties
-                    .filter(p =>
+                    .filter((p) =>
                       p.name
                         .toLowerCase()
                         .includes(propertySearch.toLowerCase())
                     )
-                    .map(p => (
+                    .map((p) => (
                       <label
                         className="flex items-center gap-2 text-sm"
                         key={p.id}
@@ -335,7 +334,10 @@ export default function InvoiceFormDrawer({
                         <input
                           type="checkbox"
                           className="accent-brand-text"
-                          checked={!!form.propertyIds?.includes(p.id)}
+                          checked={
+                            form.propertyScope === 'ENTIRE_ESTATE' ||
+                            !!form.propertyIds?.includes(p.id)
+                          }
                           onChange={() => toggle('propertyIds', p.id)}
                         />
                         {p.name}
@@ -349,46 +351,38 @@ export default function InvoiceFormDrawer({
                   )}
                 </div>
               </div>
-            )}
-
 
             <Field label="Apply to">
-              <select
+              <Select
                 className={inputCls}
                 value={form.unitScope}
-                onChange={e =>
-                  setForm(f => ({
+                onChange={(e) =>
+                  setForm((f) => ({
                     ...f,
                     unitScope: e.target.value as InvoiceValues['unitScope'],
                     unitIds: [],
                   }))
                 }
               >
-                <option value="ALL_UNITS">
-                  All property units
-                </option>
+                <option value="ALL_UNITS">All property units</option>
 
-                <option value="SELECTED_UNITS">
-                  Selected units
-                </option>
-              </select>
+                <option value="SELECTED_UNITS">Selected units</option>
+              </Select>
             </Field>
 
-
-            {form.unitScope === 'SELECTED_UNITS' && (
               <div className="space-y-2">
                 <input
                   aria-label="Search units"
                   className={inputCls}
                   placeholder="Search units"
                   value={unitSearch}
-                  onChange={e => setUnitSearch(e.target.value)}
+                  onChange={(e) => setUnitSearch(e.target.value)}
                 />
 
                 <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-3 space-y-2">
                   {unitQuery.isLoading && (
                     <p className="text-sm">
-                      Loading units…
+                      <LoadingState label="Loading units…" />
                     </p>
                   )}
 
@@ -403,12 +397,10 @@ export default function InvoiceFormDrawer({
                   )}
 
                   {eligibleUnits
-                    .filter(u =>
-                      u.name
-                        .toLowerCase()
-                        .includes(unitSearch.toLowerCase())
+                    .filter((u) =>
+                      u.name.toLowerCase().includes(unitSearch.toLowerCase())
                     )
-                    .map(u => (
+                    .map((u) => (
                       <label
                         className="flex items-center gap-2 text-sm"
                         key={u.id}
@@ -416,10 +408,14 @@ export default function InvoiceFormDrawer({
                         <input
                           className="accent-brand-text"
                           type="checkbox"
-                          checked={!!form.unitIds?.includes(u.id)}
+                          checked={
+                            form.unitScope === 'ALL_UNITS' ||
+                            !!form.unitIds?.includes(u.id)
+                          }
                           onChange={() => toggle('unitIds', u.id)}
                         />
-                        {properties.find(p => p.id === u.propertyId)?.name} · {u.name}
+                        {properties.find((p) => p.id === u.propertyId)?.name} ·{' '}
+                        {u.name}
                       </label>
                     ))}
 
@@ -430,38 +426,31 @@ export default function InvoiceFormDrawer({
                   )}
                 </div>
               </div>
-            )}
-
 
             <Field label="Amount (₦)">
-              <input
+              <AmountInput
                 className={inputCls}
-                type="number"
-                min="0.01"
-                step="0.01"
                 required
-                value={form.amount || ''}
-                onChange={e => set('amount', Number(e.target.value))}
+                value={form.amount}
+                onValueChange={(value) => set('amount', value)}
               />
             </Field>
 
-
             <Field label="Frequency">
-              <select
+              <Select
                 className={inputCls}
                 value={form.frequency}
-                onChange={e =>
+                onChange={(e) =>
                   set('frequency', e.target.value as InvoiceValues['frequency'])
                 }
               >
-                {FREQUENCIES.map(f => (
+                {FREQUENCIES.map((f) => (
                   <option key={f} value={f}>
                     {invoiceLabel(f)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
-
 
             <Field label="Invoice Month">
               <input
@@ -469,7 +458,7 @@ export default function InvoiceFormDrawer({
                 type="month"
                 required
                 value={form.invoiceMonth.slice(0, 7)}
-                onChange={e =>
+                onChange={(e) =>
                   set(
                     'invoiceMonth',
                     e.target.value ? `${e.target.value}-01` : ''
@@ -478,17 +467,14 @@ export default function InvoiceFormDrawer({
               />
             </Field>
 
-
             <Field label="Due Date">
-              <input
+              <DatePicker
                 className={inputCls}
-                type="date"
                 required
                 value={form.dueDate}
-                onChange={e => set('dueDate', e.target.value)}
+                onChange={(e) => set('dueDate', e.target.value)}
               />
             </Field>
-
 
             <fieldset>
               <legend className="text-sm font-medium text-muted-foreground mb-2">
@@ -497,32 +483,27 @@ export default function InvoiceFormDrawer({
 
               <ReceivingAccountPicker
                 value={form.receivingAccountId}
-                onChange={id => set('receivingAccountId', id)}
+                onChange={(id) => set('receivingAccountId', id)}
               />
             </fieldset>
-
 
             <Field label="Note">
               <textarea
                 className={`${inputCls} min-h-24`}
                 value={form.description}
                 placeholder="Enter notes"
-                onChange={e => set('description', e.target.value)}
+                onChange={(e) => set('description', e.target.value)}
               />
             </Field>
           </form>
         )}
 
         {validationError && (
-          <p
-            role="alert"
-            className="text-sm text-danger mt-4"
-          >
+          <p role="alert" className="text-sm text-danger mt-4">
             {validationError}
           </p>
         )}
       </div>
-
 
       <div className="shrink-0 p-4 border-t border-border bg-card flex flex-wrap justify-end gap-3">
         {preview ? (

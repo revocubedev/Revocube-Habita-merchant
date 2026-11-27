@@ -1,3 +1,8 @@
+import DatePicker from '@/components/ui/DatePicker';
+import LoadingState from '@/components/ui/LoadingState';
+import FileUpload from '@/components/ui/FileUpload';
+import Select from '@/components/ui/Select';
+import { showAlert } from '@/lib/dialog';
 import {
   useRef,
   type FormEvent,
@@ -17,7 +22,6 @@ import { useGetUnits } from "@/api/api_controllers/unitController";
 
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { ChevronDown, Plus, Search } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -254,32 +258,17 @@ function ExpenseActions({
   onEdit: () => void;
 }) {
   const { deleteExpense, isLoading } = useDeleteExpense(id);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
   const triggerRef = useRef<HTMLSpanElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const deleteRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const previousOverflow = document.body.style.overflow;
-
-    document.body.style.overflow = "hidden";
-    cancelRef.current?.focus();
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-
-      triggerRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
-    };
-  }, [isOpen]);
-
   const handleDelete = async () => {
     if (isLoading) return;
 
-    setError("");
+    setError('');
 
     try {
       await deleteExpense();
@@ -299,7 +288,7 @@ function ExpenseActions({
           <img src="/assets/ellipsis.svg" alt="" width={24} height={24} />
         }
         panelClassName="flex flex-col gap-2 rounded-[5px] bg-white px-3 py-[15px] shadow-[0_10px_20px_rgba(0,0,0,0.05)]"
-        panelStyle={{ borderRadius: 5, borderColor: "#eaecf0" }}
+        panelStyle={{ borderRadius: 5, borderColor: '#eaecf0' }}
       >
         {(close) => (
           <>
@@ -332,7 +321,7 @@ function ExpenseActions({
               className="h-9 whitespace-nowrap rounded-[5px] px-4 text-[#ff383c] hover:bg-[#fff5f5]"
               onClick={() => {
                 close();
-                setError("");
+                setError('');
                 setIsOpen(true);
               }}
             >
@@ -343,97 +332,47 @@ function ExpenseActions({
         )}
       </RowActionsMenu>
 
-      {isOpen &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/40 p-4"
-            style={{ fontFamily: "Poppins, sans-serif" }}
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget && !isLoading) {
-                setIsOpen(false);
-              }
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && !isLoading) {
-                setIsOpen(false);
-              }
-
-              if (event.key === "Tab") {
-                event.preventDefault();
-
-                const next =
-                  document.activeElement === cancelRef.current
-                    ? deleteRef.current
-                    : cancelRef.current;
-
-                next?.focus();
-              }
-            }}
-          >
-            <section
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby={`delete-expense-title-${id}`}
-              aria-describedby={`delete-expense-description-${id}`}
-              aria-busy={isLoading}
-              className="w-full max-w-[616px] rounded-lg border border-[#e9e9e9] bg-white px-5 pb-[54px] pt-8 text-center shadow-[0_8px_8px_0_rgba(0,0,0,0.1)] sm:px-8"
-            >
-              <div className="mx-auto mb-6 flex h-[70px] w-[70px] items-center justify-center rounded-full bg-[#fff4ca] shadow-[0_1px_2px_rgba(0,0,0,0.1)]">
-                <img
-                  src="/assets/expense-delete-warning.svg"
-                  alt=""
-                  width={38}
-                  height={38}
-                />
-              </div>
-
-              <h2
-                id={`delete-expense-title-${id}`}
-                className="text-2xl font-semibold leading-[1.4] text-[#393939]"
-              >
-                Are you sure you want to delete this record?
-              </h2>
-
-              <p
-                id={`delete-expense-description-${id}`}
-                className="mx-auto mt-[6px] max-w-[378px] text-base leading-[1.4] text-[#4c4c4c]"
-              >
-                This record can not be restored after delete. Do you want to
-                confirm?
-              </p>
-
-              {error && (
-                <p role="alert" className="mt-4 text-sm text-red-600">
-                  {error}
-                </p>
-              )}
-
-              <div className="mt-10 flex justify-center gap-3">
-                <Button
-                  ref={cancelRef}
-                  type="button"
-                  variant="outline"
-                  disabled={isLoading}
-                  onClick={() => setIsOpen(false)}
-                  className="h-11 w-[109px] border-[#eaeaea] bg-white font-semibold text-[#4c4c4c]"
-                >
-                  Cancel
-                </Button>
-
-                <Button
-                  ref={deleteRef}
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => void handleDelete()}
-                  className="h-11 w-[109px] bg-brand-text font-semibold text-white hover:bg-brand-text/90"
-                >
-                  {isLoading ? "Deleting..." : "Delete"}
-                </Button>
-              </div>
-            </section>
-          </div>,
-          document.body
+      <Modal
+        isOpen={isOpen}
+        onClose={() => {
+          if (!isLoading) setIsOpen(false);
+        }}
+        title="Delete Expense"
+        size="sm"
+      >
+        <p className="text-sm text-muted-foreground">
+          Are you sure you want to delete this expense? This action cannot be
+          undone.
+        </p>
+        {error && (
+          <p role="alert" className="mt-4 text-sm text-red-600">
+            {error}
+          </p>
         )}
+
+        <div className="mt-6 flex justify-end gap-3">
+          <Button
+            ref={cancelRef}
+            type="button"
+            variant="outline"
+            disabled={isLoading}
+            onClick={() => setIsOpen(false)}
+            className="border-border bg-card text-foreground"
+          >
+            Cancel
+          </Button>
+
+          <Button
+            ref={deleteRef}
+            type="button"
+            disabled={isLoading}
+            onClick={() => void handleDelete()}
+            className="bg-brand-text text-white hover:bg-brand-text/90"
+          >
+            {isLoading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </div>
+      </Modal>
     </span>
   );
 }
@@ -587,15 +526,6 @@ function ExpenseModal({
 
     const numberParts = expenseNumber.match(/^(#EXP-0*)(.+)$/);
 
-    const selectArrow = (
-      <img
-        src="/assets/expense-edit-chevron.svg"
-        alt=""
-        width={18}
-        height={18}
-        className="pointer-events-none absolute right-5 top-[15px]"
-      />
-    );
 
     return (
       <Modal
@@ -672,7 +602,7 @@ function ExpenseModal({
 
               <Field label="Issue Type">
                 <div className="relative">
-                  <select
+                  <Select
                     required
                     value={selectedIssueType}
                     disabled={typesQuery.isLoading || typesQuery.isError}
@@ -697,9 +627,8 @@ function ExpenseModal({
                         {type.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
 
-                  {selectArrow}
                 </div>
               </Field>
             </div>
@@ -753,15 +682,13 @@ function ExpenseModal({
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field label="Date">
                 <div className="relative">
-                  <Input
+                  <DatePicker
                     required
-                    type="date"
                     value={form.date}
                     onChange={(event) => change("date", event.target.value)}
                     className={`${controlClass} pr-12 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-5 [&::-webkit-calendar-picker-indicator]:z-10 [&::-webkit-calendar-picker-indicator]:opacity-0`}
                   />
 
-                  {selectArrow}
                 </div>
               </Field>
 
@@ -781,9 +708,8 @@ function ExpenseModal({
             </div>
 
             <Field label="Receipt">
-              <input
+              <FileUpload file={form.receipt}
                 aria-label="Receipt"
-                type="file"
                 onChange={(event) =>
                   change("receipt", event.target.files?.[0] ?? null)
                 }
@@ -839,28 +765,7 @@ function ExpenseModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="expense-dialog-title"
-        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-card p-6 shadow-xl"
-      >
-        <div className="mb-5 flex items-center justify-between">
-          <h2 id="expense-dialog-title" className="text-lg font-medium">
-            {mode === "create" ? "Create Expense" : "View Expense"}
-          </h2>
-
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onClose}
-            className={buttonClass}
-          >
-            Close
-          </button>
-        </div>
-
+    <Modal isOpen onClose={() => { if (!busy) onClose(); }} title={mode === "create" ? "Create Expense" : "View Expense"} size="lg">
         {error && (
           <p role="alert" className="mb-4 text-sm text-red-600">
             {error}
@@ -889,7 +794,7 @@ function ExpenseModal({
             <label className="block space-y-1">
               <span>Issue Type</span>
 
-              <select
+              <Select
                 required
                 value={selectedIssueType}
                 disabled={
@@ -918,14 +823,14 @@ function ExpenseModal({
                     {type.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block space-y-1">
                 <span>Property</span>
 
-                <select
+                <Select
                   value={form.propertyId}
                   onChange={(event) => {
                     change("propertyId", event.target.value);
@@ -940,13 +845,13 @@ function ExpenseModal({
                       {property.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
 
               <label className="block space-y-1">
                 <span>Unit</span>
 
-                <select
+                <Select
                   value={form.unitId}
                   onChange={(event) => change("unitId", event.target.value)}
                   className={inputClass}
@@ -958,7 +863,7 @@ function ExpenseModal({
                       {unit.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             </div>
 
@@ -984,9 +889,8 @@ function ExpenseModal({
               <label className="block space-y-1">
                 <span>Date</span>
 
-                <input
+                <DatePicker
                   required
-                  type="date"
                   value={form.date}
                   onChange={(event) => change("date", event.target.value)}
                   className={inputClass}
@@ -1010,8 +914,8 @@ function ExpenseModal({
               <label className="block space-y-1">
                 <span>Receipt</span>
 
-                <input
-                  type="file"
+                <FileUpload file={form.receipt}
+
                   onChange={(event) =>
                     change("receipt", event.target.files?.[0] ?? null)
                   }
@@ -1058,8 +962,7 @@ function ExpenseModal({
             </div>
           )}
         </form>
-      </section>
-    </div>
+    </Modal>
   );
 }
 
@@ -1208,7 +1111,7 @@ export default function Expense() {
     const printWindow = window.open("", "_blank");
 
     if (!printWindow) {
-      alert("Please allow pop-ups to export the PDF.");
+      void showAlert("Please allow pop-ups to export the PDF.");
       return;
     }
 
@@ -1357,10 +1260,10 @@ export default function Expense() {
         }
       }
 
-      alert("Expenses copied successfully!");
+      void showAlert("Expenses copied successfully!");
     } catch (error) {
       console.error("Copy error:", error);
-      alert("Unable to copy expenses. Please try again.");
+      void showAlert("Unable to copy expenses. Please try again.");
     }
   };
 
@@ -1521,7 +1424,7 @@ export default function Expense() {
 
         {loading && (
           <p className="px-6 py-4 text-sm text-[#5f5f5f]">
-            Loading expenses...
+            <LoadingState label="Loading expenses..." />
           </p>
         )}
 
@@ -1604,7 +1507,7 @@ export default function Expense() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <label className="flex items-center gap-2 text-sm">
             Show
-            <select
+            <Select
               value={pageSize}
               onChange={(event) => {
                 setPageSize(Number(event.target.value));
@@ -1615,7 +1518,7 @@ export default function Expense() {
               <option value={10}>10</option>
               <option value={25}>25</option>
               <option value={50}>50</option>
-            </select>
+            </Select>
             entries per page
           </label>
 

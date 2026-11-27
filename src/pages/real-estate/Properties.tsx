@@ -1,15 +1,31 @@
+import LoadingState, { CardSkeletons } from '@/components/ui/LoadingState';
+import FileUpload from '@/components/ui/FileUpload';
+import Select from '@/components/ui/Select';
 import { useState, useEffect, useRef } from 'react';
 import { Download, Home, Upload } from 'lucide-react';
-import { useGetProperties, useCreateProperty, useUpdateProperty, useGetPropertyById, useDeleteProperty, useBulkUploadPropertiesAndUnits, type BulkPropertyImportResult, type Property, type PropertyInput } from '@/api/api_controllers/property';
+import {
+  useGetProperties,
+  useCreateProperty,
+  useUpdateProperty,
+  useGetPropertyById,
+  useDeleteProperty,
+  useBulkUploadPropertiesAndUnits,
+  type BulkPropertyImportResult,
+  type Property,
+  type PropertyInput,
+} from '@/api/api_controllers/property';
 
 import type { FormEvent } from 'react';
 import Modal, { Field, inputCls } from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import RowActionsMenu, { RowAction } from '@/components/ui/RowActionsMenu';
-import { useGetPropertyTypes, extractTypes } from "@/api/api_controllers/types";
+import { useGetPropertyTypes, extractTypes } from '@/api/api_controllers/types';
 type PropertyMode = 'create' | 'edit' | 'view';
-const message = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+const message = (error: unknown) =>
+  error instanceof Error
+    ? error.message
+    : 'Something went wrong. Please try again.';
 
 function PropertyForm({
   property,
@@ -22,34 +38,34 @@ function PropertyForm({
   onClose: () => void;
   onBusyChange: (busy: boolean) => void;
 }) {
-  const [name, setName] = useState(property?.name ?? "");
-  const [description, setDescription] = useState(property?.description ?? "");
+  const [name, setName] = useState(property?.name ?? '');
+  const [description, setDescription] = useState(property?.description ?? '');
   const [typeId, setTypeId] = useState<string | null>(null); // null = untouched by the user
   const [location, setLocation] = useState({
-    address: property?.address ?? "",
-    city: property?.city ?? "",
-    state: property?.state ?? "",
-    country: property?.country ?? "",
-    zipCode: property?.zipCode ?? "",
+    address: property?.address ?? '',
+    city: property?.city ?? '',
+    state: property?.state ?? '',
+    country: property?.country ?? '',
+    zipCode: property?.zipCode ?? '',
   });
   const [thumbnailImage, setThumbnailImage] = useState<File | undefined>();
   const [propertyImage, setPropertyImage] = useState<File | undefined>();
-  const [imagePreview, setImagePreview] = useState("");
+  const [imagePreview, setImagePreview] = useState('');
   const imageInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!propertyImage) {
-      setImagePreview("");
+      setImagePreview('');
       return;
     }
     const url = URL.createObjectURL(propertyImage);
     setImagePreview(url);
     return () => URL.revokeObjectURL(url);
   }, [propertyImage]);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const create = useCreateProperty();
   const update = useUpdateProperty(property?.id);
   const busy = create.isLoading || update.isLoading;
-  const readOnly = mode === "view";
+  const readOnly = mode === 'view';
 
   // Property types come from the Types page (PROPERTY_TYPE category)
   const typesQuery = useGetPropertyTypes();
@@ -58,20 +74,20 @@ function PropertyForm({
   // Saved properties return propertyTypeId. Older rows may hold a name or a UUID under propertyType.
   const rawType: any = (property as any)?.propertyType;
   const savedRaw: string =
-    rawType && typeof rawType === "object"
-      ? String(rawType.value ?? rawType.name ?? "")
-      : String(rawType ?? "");
+    rawType && typeof rawType === 'object'
+      ? String(rawType.value ?? rawType.name ?? '')
+      : String(rawType ?? '');
   const originalTypeId: string =
     String(
       (property as any)?.propertyTypeId ??
-        (rawType && typeof rawType === "object" ? rawType.id ?? "" : "")
+        (rawType && typeof rawType === 'object' ? (rawType.id ?? '') : '')
     ) ||
     allTypes.find(
       (t) =>
         t.value.toLowerCase() === savedRaw.toLowerCase() ||
         t.id.toLowerCase() === savedRaw.toLowerCase()
     )?.id ||
-    "";
+    '';
   const selectedTypeId = typeId ?? originalTypeId;
   // Hide inactive types, except the one this property already uses
   const typeOptions = allTypes.filter(
@@ -83,13 +99,13 @@ function PropertyForm({
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (readOnly || busy) return;
-    setError("");
+    setError('');
     if (!name.trim()) {
-      setError("Property name is required.");
+      setError('Property name is required.');
       return;
     }
     if (!selectedTypeId) {
-      setError("Property type is required.");
+      setError('Property type is required.');
       return;
     }
     const values: PropertyInput = {
@@ -104,18 +120,18 @@ function PropertyForm({
     };
     const changes = Object.fromEntries(
       Object.entries(values).filter(([key, value]) =>
-        key === "propertyTypeId"
+        key === 'propertyTypeId'
           ? value !== originalTypeId
-          : value !== (property?.[key] ?? "")
+          : value !== (property?.[key] ?? '')
       )
     ) as PropertyInput;
-    if (mode === "edit" && Object.keys(changes).length === 0) {
+    if (mode === 'edit' && Object.keys(changes).length === 0) {
       onClose();
       return;
     }
     onBusyChange(true);
     try {
-      if (mode === "create") await create.createProperty(values);
+      if (mode === 'create') await create.createProperty(values);
       else {
         // PATCH only fields that changed, leaving server-managed values intact.
         await update.updateProperty(changes);
@@ -128,26 +144,26 @@ function PropertyForm({
     }
   };
 
-  if (mode !== "view") {
-    const editing = mode === "edit";
+  if (mode !== 'view') {
+    const editing = mode === 'edit';
     const gallery = imagePreview
       ? [imagePreview]
       : [
           ...new Set(
             [property?.propertyImage, ...(property?.images ?? [])].filter(
               (image): image is string =>
-                typeof image === "string" && Boolean(image)
+                typeof image === 'string' && Boolean(image)
             )
           ),
         ];
     const controlClass =
-      "h-12 border-[#eaeaea] bg-white px-5 pr-12 text-base leading-[1.4] text-[#4c4c4c] placeholder:text-[#a1a1a1]";
+      'h-12 border-[#eaeaea] bg-white px-5 pr-12 text-base leading-[1.4] text-[#4c4c4c] placeholder:text-[#a1a1a1]';
     const arrow = (visible = false) => (
       <img
         src={
           visible
-            ? "/assets/property-create-chevron.svg"
-            : "/assets/property-create-field-arrow.svg"
+            ? '/assets/property-create-chevron.svg'
+            : '/assets/property-create-field-arrow.svg'
         }
         alt=""
         width={18}
@@ -166,7 +182,7 @@ function PropertyForm({
           <Input
             value={location[key]}
             placeholder={placeholder}
-            list={country ? "property-countries" : undefined}
+            list={country ? 'property-countries' : undefined}
             onChange={(event) =>
               setLocation((previous) => ({
                 ...previous,
@@ -179,8 +195,6 @@ function PropertyForm({
         </div>
       </Field>
     );
-    const fileClass =
-      "block h-12 w-full overflow-hidden rounded-lg border border-[#eaeaea] bg-white text-base leading-[46px] text-[#898989] file:mr-6 file:h-[46px] file:w-[126px] file:border-0 file:border-x file:border-[#eceff1] file:bg-[#eaeaea] file:px-4 file:text-base file:text-[#727272]";
     return (
       <form onSubmit={submit}>
         {error && (
@@ -199,28 +213,27 @@ function PropertyForm({
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field label="Type">
                 <div className="relative">
-                  <select
+                  <Select
                     autoFocus
                     required
                     value={selectedTypeId}
                     onChange={(event) => setTypeId(event.target.value)}
                     disabled={typesQuery.isLoading}
                     className={`w-full appearance-none rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-text/20 disabled:opacity-60 ${controlClass} ${
-                      selectedTypeId ? "" : "text-[#a1a1a1]"
+                      selectedTypeId ? '' : 'text-[#a1a1a1]'
                     }`}
                   >
                     <option value="" disabled>
                       {typesQuery.isLoading
-                        ? "Loading types..."
-                        : "Select property type"}
+                        ? 'Loading types...'
+                        : 'Select property type'}
                     </option>
                     {typeOptions.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.label}
                       </option>
                     ))}
-                  </select>
-                  {arrow(true)}
+                  </Select>
                 </div>
                 {typesQuery.isError && (
                   <p className="mt-1 text-xs text-red-600">
@@ -242,31 +255,31 @@ function PropertyForm({
               </Field>
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              {locationField("country", "Country", "Select country", true)}
-              {locationField("state", "State", "Select state")}
+              {locationField('country', 'Country', 'Select country', true)}
+              {locationField('state', 'State', 'Select state')}
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              {locationField("city", "City", "Select city")}
-              {locationField("zipCode", "Zip Code", "Enter Zipcode")}
+              {locationField('city', 'City', 'Select city')}
+              {locationField('zipCode', 'Zip Code', 'Enter Zipcode')}
             </div>
             <div
               className={
                 editing
-                  ? "grid grid-cols-1 gap-5"
-                  : "grid grid-cols-1 gap-5 sm:grid-cols-2"
+                  ? 'grid grid-cols-1 gap-5'
+                  : 'grid grid-cols-1 gap-5 sm:grid-cols-2'
               }
             >
-              {locationField("address", "Address", "Enter address")}
+              {locationField('address', 'Address', 'Enter address')}
             </div>
             <label className="block">
               <span className="!mb-5 block !text-base !leading-[22px] !text-[#393939]">
                 Thumbnail Image
               </span>
-              <input
+              <FileUpload
+                file={thumbnailImage ?? null}
                 type="file"
                 accept="image/*"
                 onChange={(event) => setThumbnailImage(event.target.files?.[0])}
-                className={fileClass}
               />
             </label>
             <Field label="Description">
@@ -291,12 +304,12 @@ function PropertyForm({
             <span className="!mb-8 block !text-base !leading-[22px] !text-[#393939]">
               Add Property Image
             </span>
-            <input
+            <FileUpload
+              file={propertyImage ?? null}
               ref={imageInputRef}
               type="file"
               accept="image/*"
               onChange={(event) => setPropertyImage(event.target.files?.[0])}
-              className={fileClass}
             />
           </label>
           {editing && (
@@ -321,7 +334,7 @@ function PropertyForm({
                       onClick={() => {
                         setPropertyImage(undefined);
                         if (imageInputRef.current)
-                          imageInputRef.current.value = "";
+                          imageInputRef.current.value = '';
                       }}
                       className="absolute right-0 top-0 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#ffedee]"
                     >
@@ -343,7 +356,7 @@ function PropertyForm({
         </fieldset>
         <div
           className={`mt-12 flex justify-end ${
-            editing ? "sm:mt-[203px]" : "sm:mt-[217px]"
+            editing ? 'sm:mt-[203px]' : 'sm:mt-[217px]'
           }`}
         >
           <Button
@@ -353,11 +366,11 @@ function PropertyForm({
           >
             {busy
               ? editing
-                ? "Saving..."
-                : "Adding..."
+                ? 'Saving...'
+                : 'Adding...'
               : editing
-              ? "Edit Property"
-              : "Add Property"}
+                ? 'Edit Property'
+                : 'Add Property'}
           </Button>
         </div>
       </form>
@@ -405,12 +418,12 @@ function PropertyForm({
           />
         </Field>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {(["city", "state", "country", "zipCode"] as const).map((key) => (
+          {(['city', 'state', 'country', 'zipCode'] as const).map((key) => (
             <Field
               key={key}
               label={
-                key === "zipCode"
-                  ? "ZIP Code"
+                key === 'zipCode'
+                  ? 'ZIP Code'
                   : key[0].toUpperCase() + key.slice(1)
               }
             >
@@ -430,19 +443,19 @@ function PropertyForm({
         {!readOnly && (
           <>
             <Field label="Thumbnail Image">
-              <input
+              <FileUpload
+                file={thumbnailImage ?? null}
                 type="file"
                 accept="image/*"
                 onChange={(event) => setThumbnailImage(event.target.files?.[0])}
-                className={inputCls}
               />
             </Field>
             <Field label="Property Image">
-              <input
+              <FileUpload
+                file={propertyImage ?? null}
                 type="file"
                 accept="image/*"
                 onChange={(event) => setPropertyImage(event.target.files?.[0])}
-                className={inputCls}
               />
             </Field>
           </>
@@ -451,12 +464,13 @@ function PropertyForm({
       {readOnly && (
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <dt className="text-muted-foreground">Units</dt>
-            <dd>{property?.unitCount ?? "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Rooms</dt>
-            <dd>{property?.roomCount ?? "—"}</dd>
+            <dt className="text-muted-foreground">Total Units</dt>
+            <dd>
+              {property?.totalUnits ??
+                property?.unitCount ??
+                property?.units?.length ??
+                '—'}
+            </dd>
           </div>
         </dl>
       )}
@@ -467,7 +481,7 @@ function PropertyForm({
           disabled={busy}
           onClick={onClose}
         >
-          {readOnly ? "Close" : "Cancel"}
+          {readOnly ? 'Close' : 'Cancel'}
         </Button>
         {!readOnly && (
           <Button
@@ -475,7 +489,7 @@ function PropertyForm({
             disabled={busy}
             className="bg-brand-text text-white hover:bg-brand-text/90"
           >
-            {busy ? "Saving..." : "Update Property"}
+            {busy ? 'Saving...' : 'Update Property'}
           </Button>
         )}
       </div>
@@ -483,46 +497,137 @@ function PropertyForm({
   );
 }
 
-function PropertyModal({ mode, id, onClose }: { mode: PropertyMode; id?: string; onClose: () => void }) {
+function PropertyModal({
+  mode,
+  id,
+  onClose,
+}: {
+  mode: PropertyMode;
+  id?: string;
+  onClose: () => void;
+}) {
   const detail = useGetPropertyById(id, mode !== 'create');
   const [busy, setBusy] = useState(false);
-  const title = mode === 'create' ? 'Add Property' : mode === 'edit' ? 'Edit Property' : 'View Property';
+  const title =
+    mode === 'create'
+      ? 'Add Property'
+      : mode === 'edit'
+        ? 'Edit Property'
+        : 'View Property';
   const property = detail.data?.data;
   return (
-    <Modal isOpen onClose={() => { if (!busy) onClose(); }} title={title}
+    <Modal
+      isOpen
+      onClose={() => {
+        if (!busy) onClose();
+      }}
+      title={title}
       presentation={mode !== 'view' ? 'drawer' : 'modal'}
-      closeIcon={mode !== 'view' ? <img src="/assets/property-create-close.svg" alt="" width={14} height={14} /> : undefined}
-      bodyClassName={mode !== 'view' ? 'relative bg-white px-5 pb-8 pt-[35px] sm:px-8' : undefined}
+      closeIcon={
+        mode !== 'view' ? (
+          <img
+            src="/assets/property-create-close.svg"
+            alt=""
+            width={14}
+            height={14}
+          />
+        ) : undefined
+      }
+      bodyClassName={
+        mode !== 'view'
+          ? 'relative bg-white px-5 pb-8 pt-[35px] sm:px-8'
+          : undefined
+      }
     >
-      {mode !== 'view' && <div className="pointer-events-none absolute right-0 top-[376.76px] h-[69.418px] w-[16.04px] overflow-hidden"><img src="/assets/property-create-edge.svg" alt="" width={32} height={32} /></div>}
-      {mode !== 'create' && detail.isLoading && <p role="status" className="text-sm">Loading property...</p>}
+      {mode !== 'view' && (
+        <div className="pointer-events-none absolute right-0 top-[376.76px] h-[69.418px] w-[16.04px] overflow-hidden">
+          <img
+            src="/assets/property-create-edge.svg"
+            alt=""
+            width={32}
+            height={32}
+          />
+        </div>
+      )}
+      {mode !== 'create' && detail.isLoading && (
+        <p role="status" className="text-sm">
+          <LoadingState label="Loading property..." />
+        </p>
+      )}
       {mode !== 'create' && detail.error && (
         <div role="alert" className="space-y-3 text-sm text-red-600">
           <p>{message(detail.error)}</p>
-          <Button variant="outline" disabled={detail.isFetching} onClick={() => void detail.refetch()}>Try again</Button>
+          <Button
+            variant="outline"
+            disabled={detail.isFetching}
+            onClick={() => void detail.refetch()}
+          >
+            Try again
+          </Button>
         </div>
       )}
-      {(mode === 'create' || (property && !detail.error)) && <PropertyForm key={property?.id ?? 'new'} property={property} mode={mode} onClose={onClose} onBusyChange={setBusy} />}
+      {(mode === 'create' || (property && !detail.error)) && (
+        <PropertyForm
+          key={property?.id ?? 'new'}
+          property={property}
+          mode={mode}
+          onClose={onClose}
+          onBusyChange={setBusy}
+        />
+      )}
     </Modal>
   );
 }
 
-function DeletePropertyModal({ property, onClose }: { property: Property; onClose: () => void }) {
+function DeletePropertyModal({
+  property,
+  onClose,
+}: {
+  property: Property;
+  onClose: () => void;
+}) {
   const remove = useDeleteProperty(property.id);
   const [error, setError] = useState('');
   const confirm = async () => {
     if (remove.isLoading) return;
     setError('');
-    try { await remove.deleteProperty(); onClose(); }
-    catch (err) { setError(message(err)); }
+    try {
+      await remove.deleteProperty();
+      onClose();
+    } catch (err) {
+      setError(message(err));
+    }
   };
   return (
-    <Modal isOpen title="Delete Property" size="sm" onClose={() => { if (!remove.isLoading) onClose(); }}>
-      <p className="mb-5 text-sm">Are you sure you want to delete {property.name ? `“${property.name}”` : 'this property'}? This action cannot be undone.</p>
-      {error && <p role="alert" className="mb-4 text-sm text-red-600">{error}</p>}
+    <Modal
+      isOpen
+      title="Delete Property"
+      size="sm"
+      onClose={() => {
+        if (!remove.isLoading) onClose();
+      }}
+    >
+      <p className="mb-5 text-sm">
+        Are you sure you want to delete{' '}
+        {property.name ? `“${property.name}”` : 'this property'}? This action
+        cannot be undone.
+      </p>
+      {error && (
+        <p role="alert" className="mb-4 text-sm text-red-600">
+          {error}
+        </p>
+      )}
       <div className="flex justify-end gap-3">
-        <Button variant="outline" disabled={remove.isLoading} onClick={onClose}>Cancel</Button>
-        <Button disabled={remove.isLoading} onClick={() => void confirm()} className="bg-brand-text text-white hover:bg-brand-text/90">{remove.isLoading ? 'Deleting...' : 'Delete'}</Button>
+        <Button variant="outline" disabled={remove.isLoading} onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          disabled={remove.isLoading}
+          onClick={() => void confirm()}
+          className="bg-brand-text text-white hover:bg-brand-text/90"
+        >
+          {remove.isLoading ? 'Deleting...' : 'Delete'}
+        </Button>
       </div>
     </Modal>
   );
@@ -549,19 +654,22 @@ function BulkPropertyUploadModal({ onClose }: { onClose: () => void }) {
 
   const propertySummary = result?.summary.properties;
   const unitSummary = result?.summary.units;
-  const hasErrors = Boolean(result && (result.errors.properties.length || result.errors.units.length));
+  const hasErrors = Boolean(
+    result && (result.errors.properties.length || result.errors.units.length)
+  );
   const formatImportError = (item: unknown) => {
     if (typeof item === 'string') return item;
     if (item && typeof item === 'object') {
       const error = item as Record<string, unknown>;
       const row = typeof error.row === 'number' ? `Row ${error.row}: ` : '';
-      const detail = [error.message, error.error, error.reason].find((value) => typeof value === 'string');
+      const detail = [error.message, error.error, error.reason].find(
+        (value) => typeof value === 'string'
+      );
       return `${row}${detail ?? JSON.stringify(error)}`;
     }
     return String(item);
   };
 
-  const chooseFile = () => fileInputRef.current?.click();
   const selectFile = (nextFile?: File) => {
     if (!nextFile) return;
     setFile(nextFile);
@@ -570,77 +678,216 @@ function BulkPropertyUploadModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal isOpen title="Bulk Upload Properties & Units" presentation="drawer" onClose={() => { if (!bulkUpload.isLoading) onClose(); }} bodyClassName="bg-white px-5 py-6 sm:px-8">
+    <Modal
+      isOpen
+      title="Bulk Upload Properties & Units"
+      presentation="drawer"
+      onClose={() => {
+        if (!bulkUpload.isLoading) onClose();
+      }}
+      bodyClassName="bg-white px-5 py-6 sm:px-8"
+    >
       <form onSubmit={submit} className="space-y-5 pb-24">
-        <p className="text-sm leading-5 text-[#727272]">Upload an Excel file to add multiple properties and units at once.</p>
+        <p className="text-sm leading-5 text-[#727272]">
+          Upload an Excel file to add multiple properties and units at once.
+        </p>
         <section className="flex items-center justify-between gap-4 rounded-xl border border-[#e2e8f0] bg-[#fcfcfd] p-4">
           <div>
-            <h3 className="text-base font-semibold text-[#393939]">Need a template?</h3>
-            <p className="mt-1 text-sm text-[#5f5f5f]">Download the approved properties and units import workbook.</p>
+            <h3 className="text-base font-semibold text-[#393939]">
+              Need a template?
+            </h3>
+            <p className="mt-1 text-sm text-[#5f5f5f]">
+              Download the approved properties and units import workbook.
+            </p>
           </div>
-          <a href="/templates/property-unit-bulk-import-template.xlsx" download="property-unit-bulk-import-template.xlsx" className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-brand-text px-4 py-2 text-sm font-medium text-brand-text hover:bg-[#fff5f5]">
-            <Download className="h-4 w-4" />Template
+          <a
+            href="/templates/property-unit-bulk-import-template.xlsx"
+            download="property-unit-bulk-import-template.xlsx"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-brand-text px-4 py-2 text-sm font-medium text-brand-text hover:bg-[#fff5f5]"
+          >
+            <Download className="h-4 w-4" />
+            Template
           </a>
         </section>
-        <input ref={fileInputRef} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(event) => { selectFile(event.target.files?.[0]); event.target.value = ''; }} />
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={chooseFile}
-          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); chooseFile(); } }}
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={(event) => { event.preventDefault(); selectFile(event.dataTransfer.files?.[0]); }}
-          className="flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#cbd5e1] bg-white px-6 text-center transition-colors hover:border-brand-text hover:bg-[#fffafa]"
-        >
-          <Upload className="mb-4 h-10 w-10 text-[#98a2b3]" />
-          <p className="text-base font-medium text-[#4c4c4c]">Click to upload or drag & drop</p>
-          <p className="mt-1 text-sm text-[#98a2b3]">.xlsx</p>
-          {file && <p className="mt-4 max-w-full truncate rounded-md bg-[#f6f6f6] px-3 py-2 text-sm text-[#393939]">{file.name}</p>}
-        </div>
-        {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-        {result && <section className="space-y-4 rounded-lg border border-[#eaeaea] bg-[#fafafa] p-4" aria-live="polite">
-          <h3 className="text-sm font-semibold text-[#393939]">Import complete</h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-lg bg-white p-3"><p className="text-xs text-[#727272]">Properties</p><p className="mt-1 text-sm text-[#393939]">{propertySummary?.successful ?? 0} imported · {propertySummary?.failed ?? 0} failed</p></div>
-            <div className="rounded-lg bg-white p-3"><p className="text-xs text-[#727272]">Units</p><p className="mt-1 text-sm text-[#393939]">{unitSummary?.successful ?? 0} imported · {unitSummary?.failed ?? 0} failed</p></div>
-          </div>
-          {result.properties.length > 0 && <p className="text-sm text-[#5f5f5f]">Properties: {result.properties.map((property) => property.name).join(', ')}</p>}
-          {result.units.length > 0 && <p className="text-sm text-[#5f5f5f]">Units: {result.units.map((unit) => unit.name).join(', ')}</p>}
-          {hasErrors && <div className="space-y-2 rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">
-            <p className="font-medium">Some rows could not be imported.</p>
-            {result.errors.properties.map((item, index) => <p key={`property-error-${index}`}>Property: {formatImportError(item)}</p>)}
-            {result.errors.units.map((item, index) => <p key={`unit-error-${index}`}>Unit: {formatImportError(item)}</p>)}
-          </div>}
-        </section>}
+        <FileUpload
+          file={file ?? null}
+          ref={fileInputRef}
+          aria-label="Import workbook"
+          accept=".xlsx"
+          disabled={bulkUpload.isLoading}
+          onChange={(event) => selectFile(event.target.files?.[0])}
+        />
+        {error && (
+          <p
+            role="alert"
+            className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600"
+          >
+            {error}
+          </p>
+        )}
+        {result && (
+          <section
+            className="space-y-4 rounded-lg border border-[#eaeaea] bg-[#fafafa] p-4"
+            aria-live="polite"
+          >
+            <h3 className="text-sm font-semibold text-[#393939]">
+              Import complete
+            </h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-lg bg-white p-3">
+                <p className="text-xs text-[#727272]">Properties</p>
+                <p className="mt-1 text-sm text-[#393939]">
+                  {propertySummary?.successful ?? 0} imported ·{' '}
+                  {propertySummary?.failed ?? 0} failed
+                </p>
+              </div>
+              <div className="rounded-lg bg-white p-3">
+                <p className="text-xs text-[#727272]">Units</p>
+                <p className="mt-1 text-sm text-[#393939]">
+                  {unitSummary?.successful ?? 0} imported ·{' '}
+                  {unitSummary?.failed ?? 0} failed
+                </p>
+              </div>
+            </div>
+            {result.properties.length > 0 && (
+              <p className="text-sm text-[#5f5f5f]">
+                Properties:{' '}
+                {result.properties.map((property) => property.name).join(', ')}
+              </p>
+            )}
+            {result.units.length > 0 && (
+              <p className="text-sm text-[#5f5f5f]">
+                Units: {result.units.map((unit) => unit.name).join(', ')}
+              </p>
+            )}
+            {hasErrors && (
+              <div className="space-y-2 rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">
+                <p className="font-medium">Some rows could not be imported.</p>
+                {result.errors.properties.map((item, index) => (
+                  <p key={`property-error-${index}`}>
+                    Property: {formatImportError(item)}
+                  </p>
+                ))}
+                {result.errors.units.map((item, index) => (
+                  <p key={`unit-error-${index}`}>
+                    Unit: {formatImportError(item)}
+                  </p>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
         <div className="fixed bottom-0 right-0 flex h-[88px] w-full max-w-[622px] items-center gap-3 border-t border-[#eaeaea] bg-white px-5 sm:px-8">
-          <Button type="button" variant="outline" disabled={bulkUpload.isLoading} onClick={onClose} className="flex-1">{result ? 'Close' : 'Cancel'}</Button>
-          {!result && <Button type="submit" disabled={!file || bulkUpload.isLoading} className="flex-1 bg-brand-text text-white hover:bg-brand-text/90" leftIcon={<Upload className="h-4 w-4" />}>{bulkUpload.isLoading ? 'Uploading...' : 'Upload File'}</Button>}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={bulkUpload.isLoading}
+            onClick={onClose}
+            className="flex-1"
+          >
+            {result ? 'Close' : 'Cancel'}
+          </Button>
+          {!result && (
+            <Button
+              type="submit"
+              disabled={!file || bulkUpload.isLoading}
+              className="flex-1 bg-brand-text text-white hover:bg-brand-text/90"
+              leftIcon={<Upload className="h-4 w-4" />}
+            >
+              {bulkUpload.isLoading ? 'Uploading...' : 'Upload File'}
+            </Button>
+          )}
         </div>
       </form>
     </Modal>
   );
 }
 
-function PropertyIcon({ name, size, className = '' }: { name: string; size: number; className?: string }) {
-  return <img src={`/assets/${name}.svg`} alt="" width={size} height={size} className={`shrink-0 ${className}`} />;
+function PropertyIcon({
+  name,
+  size,
+  className = '',
+}: {
+  name: string;
+  size: number;
+  className?: string;
+}) {
+  return (
+    <img
+      src={`/assets/${name}.svg`}
+      alt=""
+      width={size}
+      height={size}
+      className={`shrink-0 ${className}`}
+    />
+  );
 }
 
 function PropertyImages({ images, name }: { images?: string[]; name: string }) {
   const [index, setIndex] = useState(0);
-  const sources = Array.isArray(images) ? [...new Set(images.filter((value) => typeof value === 'string' && value.trim()))] : [];
+  const sources = Array.isArray(images)
+    ? [
+        ...new Set(
+          images.filter((value) => typeof value === 'string' && value.trim())
+        ),
+      ]
+    : [];
   const active = sources.length ? index % sources.length : 0;
-  return <>
-    {sources.length ? <img src={sources[active]} alt={name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center bg-muted"><Home className="h-12 w-12 text-muted-foreground" /></div>}
-    {sources.length > 0 && <>
-      <button type="button" aria-label={`Previous image of ${name}`} disabled={sources.length < 2} onClick={() => setIndex((value) => (value - 1 + sources.length) % sources.length)} className="absolute left-4 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-[#e2e8f0] bg-white disabled:cursor-default"><PropertyIcon name="image-left" size={12} /></button>
-      <button type="button" aria-label={`Next image of ${name}`} disabled={sources.length < 2} onClick={() => setIndex((value) => (value + 1) % sources.length)} className="absolute right-4 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-[#e2e8f0] bg-white disabled:cursor-default"><PropertyIcon name="image-right" size={12} /></button>
-      <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1 bg-gradient-to-b from-transparent to-black/50 p-4">{sources.map((source, imageIndex) => <button key={source} type="button" aria-label={`Show image ${imageIndex + 1} of ${name}`} aria-pressed={imageIndex === active} onClick={() => setIndex(imageIndex)} className={`h-[3px] w-3 rounded-full bg-white ${imageIndex === active ? '' : 'opacity-30'}`} />)}</div>
-    </>}
-  </>;
+  return (
+    <>
+      {sources.length ? (
+        <img
+          src={sources[active]}
+          alt={name}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-muted">
+          <Home className="h-12 w-12 text-muted-foreground" />
+        </div>
+      )}
+      {sources.length > 0 && (
+        <>
+          <button
+            type="button"
+            aria-label={`Previous image of ${name}`}
+            disabled={sources.length < 2}
+            onClick={() =>
+              setIndex((value) => (value - 1 + sources.length) % sources.length)
+            }
+            className="absolute left-4 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-[#e2e8f0] bg-white disabled:cursor-default"
+          >
+            <PropertyIcon name="image-left" size={12} />
+          </button>
+          <button
+            type="button"
+            aria-label={`Next image of ${name}`}
+            disabled={sources.length < 2}
+            onClick={() => setIndex((value) => (value + 1) % sources.length)}
+            className="absolute right-4 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-[#e2e8f0] bg-white disabled:cursor-default"
+          >
+            <PropertyIcon name="image-right" size={12} />
+          </button>
+          <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1 bg-gradient-to-b from-transparent to-black/50 p-4">
+            {sources.map((source, imageIndex) => (
+              <button
+                key={source}
+                type="button"
+                aria-label={`Show image ${imageIndex + 1} of ${name}`}
+                aria-pressed={imageIndex === active}
+                onClick={() => setIndex(imageIndex)}
+                className={`h-[3px] w-3 rounded-full bg-white ${imageIndex === active ? '' : 'opacity-30'}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
 }
 
 const Properties = () => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [modal, setModal] = useState<{
@@ -649,7 +896,7 @@ const Properties = () => {
   } | null>(null);
   const [deleting, setDeleting] = useState<Property | null>(null);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
-  const code = localStorage.getItem("est_code")?.trim() ?? "";
+  const code = localStorage.getItem('est_code')?.trim() ?? '';
   const query = useGetProperties({
     page: currentPage,
     perPage: pageSize,
@@ -661,26 +908,26 @@ const Properties = () => {
   const typeLabelFor = (p: any): string => {
     const raw =
       p.propertyTypeId ??
-      (p.propertyType && typeof p.propertyType === "object"
+      (p.propertyType && typeof p.propertyType === 'object'
         ? p.propertyType.id
         : p.propertyType);
     const match = extractTypes(typesQuery.data, true).find(
       (t) =>
         t.id === raw ||
-        t.value.toLowerCase() === String(raw ?? "").toLowerCase()
+        t.value.toLowerCase() === String(raw ?? '').toLowerCase()
     );
     return (
-      match?.label ?? (typeof p.propertyType === "string" ? p.propertyType : "")
+      match?.label ?? (typeof p.propertyType === 'string' ? p.propertyType : '')
     );
   };
 
   const properties = query.data?.data ?? [];
   const meta = query.data?.meta;
   const loadError = !code
-    ? "Estate code is missing. Sign in to your estate first."
+    ? 'Estate code is missing. Sign in to your estate first.'
     : query.error?.message;
   const filtered = properties.filter((property) =>
-    (property.name ?? "")
+    (property.name ?? '')
       .toLowerCase()
       .includes(searchQuery.trim().toLowerCase())
   );
@@ -696,13 +943,13 @@ const Properties = () => {
   const currentProperties = loadError
     ? []
     : searchQuery.trim()
-    ? filtered.slice(start, start + pageSize)
-    : meta
-    ? properties
-    : filtered.slice(start, start + pageSize);
+      ? filtered.slice(start, start + pageSize)
+      : meta
+        ? properties
+        : filtered.slice(start, start + pageSize);
   const navigationDisabled = query.isFetching || Boolean(loadError);
   const pageButton =
-    "flex h-[26px] items-center justify-center rounded border border-[#eaeaea] bg-white text-xs leading-[18px] text-[#4c4c4c] disabled:opacity-40";
+    'flex h-[26px] items-center justify-center rounded border border-[#eaeaea] bg-white text-xs leading-[18px] text-[#4c4c4c] disabled:opacity-40';
   useEffect(() => {
     if (query.data && currentPage > totalPages) setCurrentPage(totalPages);
   }, [query.data, currentPage, totalPages]);
@@ -710,20 +957,7 @@ const Properties = () => {
     setModal({ mode, id });
 
   return (
-    <div style={{ fontFamily: "Poppins, sans-serif" }}>
-      <nav
-        aria-label="Breadcrumb"
-        className="flex h-[25px] items-center gap-1 text-xs leading-[1.4] text-[#5f5f5f]"
-      >
-        <span>Real Estate</span>
-        <PropertyIcon name="breadcrumb" size={20} />
-        <span
-          aria-current="page"
-          className="px-2 py-1 font-medium text-brand-text"
-        >
-          Properties
-        </span>
-      </nav>
+    <div style={{ fontFamily: 'Poppins, sans-serif' }}>
       <div className="mt-[26px] flex min-h-11 items-center justify-between gap-4">
         <h1 className="text-lg font-semibold leading-[1.4] text-[#393939]">
           Property List
@@ -740,7 +974,7 @@ const Properties = () => {
           <button
             type="button"
             disabled={!code}
-            onClick={() => openProperty("create")}
+            onClick={() => openProperty('create')}
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-text px-4 py-3 text-sm font-medium leading-5 text-white hover:bg-brand-text/90 disabled:opacity-50"
           >
             <PropertyIcon name="plus" size={18} />
@@ -787,23 +1021,19 @@ const Properties = () => {
             )}
           </div>
         )}
-        {code && query.isLoading && (
-          <p role="status" className="p-8 text-sm text-muted-foreground">
-            Loading properties...
-          </p>
-        )}
+        {code && query.isLoading && <CardSkeletons />}
         {!loadError && !query.isLoading && currentProperties.length === 0 && (
           <p className="p-8 text-center text-sm text-muted-foreground">
             {searchQuery.trim()
-              ? "No matching properties found."
-              : "No properties yet. Create your first property to get started."}
+              ? 'No matching properties found.'
+              : 'No properties yet. Create your first property to get started.'}
           </p>
         )}
         <div className="grid grid-cols-1 gap-x-6 gap-y-8 px-4 pb-12 pt-8 sm:grid-cols-2 sm:px-6 xl:grid-cols-4">
           {currentProperties.map((property) => {
-            const name = property.name || "Unnamed property";
+            const name = property.name || 'Unnamed property';
             const badge =
-              typeof property.ownershipType === "string"
+              typeof property.ownershipType === 'string'
                 ? property.ownershipType
                 : typeLabelFor(property);
             return (
@@ -820,7 +1050,7 @@ const Properties = () => {
                       ...(property.images ?? []),
                     ].filter(
                       (image): image is string =>
-                        typeof image === "string" && Boolean(image)
+                        typeof image === 'string' && Boolean(image)
                     )}
                   />
                   {badge && (
@@ -843,7 +1073,7 @@ const Properties = () => {
                       triggerClassName="h-[30px] w-[30px] rounded-full"
                       triggerIcon={<PropertyIcon name="ellipsis" size={24} />}
                       panelClassName="flex flex-col gap-2 rounded-[5px] border-[0.5px] bg-white px-3 py-[15px] shadow-[0_10px_20px_rgba(0,0,0,0.05)]"
-                      panelStyle={{ borderRadius: 5, borderColor: "#eaecf0" }}
+                      panelStyle={{ borderRadius: 5, borderColor: '#eaecf0' }}
                     >
                       {(close) => (
                         <>
@@ -851,7 +1081,7 @@ const Properties = () => {
                             className="h-9 shrink-0 rounded-[5px] px-4 py-2 text-sm font-normal leading-5 text-[#5f5f5f]"
                             onClick={() => {
                               close();
-                              openProperty("view", property.id);
+                              openProperty('view', property.id);
                             }}
                           >
                             <PropertyIcon name="view" size={14} />
@@ -861,7 +1091,7 @@ const Properties = () => {
                             className="h-9 shrink-0 rounded-[5px] px-4 py-2 text-sm font-normal leading-5 text-[#5f5f5f]"
                             onClick={() => {
                               close();
-                              openProperty("edit", property.id);
+                              openProperty('edit', property.id);
                             }}
                           >
                             <PropertyIcon name="edit" size={14} />
@@ -887,11 +1117,11 @@ const Properties = () => {
                   <div className="flex gap-[10px] text-sm leading-5 text-[#727272]">
                     <span className="flex min-w-0 flex-1 items-center gap-1">
                       <PropertyIcon name="building" size={14} />
-                      {property.unitCount ?? "—"} Unit
-                    </span>
-                    <span className="flex min-w-0 flex-1 items-center gap-1">
-                      <PropertyIcon name="building" size={14} />
-                      {property.roomCount ?? "—"} Rooms
+                      {property.totalUnits ??
+                        property.unitCount ??
+                        property.units?.length ??
+                        '—'}{' '}
+                      Total Units
                     </span>
                   </div>
                 </div>
@@ -904,7 +1134,7 @@ const Properties = () => {
         <label className="flex items-center gap-2 text-sm leading-[26px] text-[#4c4c4c]">
           Show
           <span className="relative">
-            <select
+            <Select
               value={pageSize}
               onChange={(event) => {
                 setPageSize(Number(event.target.value));
@@ -917,10 +1147,7 @@ const Properties = () => {
                   {size}
                 </option>
               ))}
-            </select>
-            <span className="pointer-events-none absolute right-1 top-[5px]">
-              <PropertyIcon name="page-size" size={16} />
-            </span>
+            </Select>
           </span>
           entries per page
         </label>
@@ -956,13 +1183,13 @@ const Properties = () => {
                     type="button"
                     key={page}
                     aria-label={`Page ${page}`}
-                    aria-current={currentPage === page ? "page" : undefined}
+                    aria-current={currentPage === page ? 'page' : undefined}
                     disabled={navigationDisabled}
                     onClick={() => setCurrentPage(page)}
                     className={`${pageButton} w-7 font-medium ${
                       currentPage === page
-                        ? "!border-brand-text !bg-brand-text !text-white"
-                        : ""
+                        ? '!border-brand-text !bg-brand-text !text-white'
+                        : ''
                     }`}
                   >
                     {page}
@@ -994,7 +1221,7 @@ const Properties = () => {
       </div>
       {modal && (
         <PropertyModal
-          key={`${modal.mode}-${modal.id ?? "new"}`}
+          key={`${modal.mode}-${modal.id ?? 'new'}`}
           mode={modal.mode}
           id={modal.id}
           onClose={() => setModal(null)}

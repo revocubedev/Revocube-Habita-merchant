@@ -1,3 +1,5 @@
+import LoadingState from '@/components/ui/LoadingState';
+import Select from '@/components/ui/Select';
 import { useEffect, useState } from 'react';
 import { Plus, Landmark } from 'lucide-react';
 import Modal, { Field, inputCls } from '@/components/ui/Modal';
@@ -21,26 +23,38 @@ export const AddBankAccountModal = ({
   onCreated?: (acc: ReceivingAccount) => void;
 }) => {
   const { createAccount, isLoading } = useCreateReceivingAccount();
-  const { requestOtp, isLoading: requestingOtp } = useRequestReceivingAccountOtp();
-  const [otpDelivery, setOtpDelivery] = useState<{ email: string; expiresInMinutes: number } | null>(null);
+  const { requestOtp, isLoading: requestingOtp } =
+    useRequestReceivingAccountOtp();
+  const [otpDelivery, setOtpDelivery] = useState<{
+    email: string;
+    expiresInMinutes: number;
+  } | null>(null);
   const [otp, setOtp] = useState('');
   const [form, setForm] = useState({
     accountNumber: '',
     bankCode: '',
   });
-  const [shouldResolve, setShouldResolve] = useState(false);
-  const { banks, isLoading: banksLoading, isError: banksError } = useGetReceivingBanks(isOpen);
+  const shouldResolve = /^\d{10}$/.test(form.accountNumber) && !!form.bankCode;
   const {
+    banks,
+    isLoading: banksLoading,
+    isError: banksError,
+  } = useGetReceivingBanks(isOpen);
+  const {
+    refetch: retryResolution,
     resolvedAccount,
     isFetching: resolving,
     isError: resolveError,
     isSuccess: resolveSucceeded,
-  } = useResolveBankAccount(form.accountNumber, form.bankCode, isOpen && shouldResolve);
+  } = useResolveBankAccount(
+    form.accountNumber,
+    form.bankCode,
+    isOpen && shouldResolve
+  );
 
   useEffect(() => {
     if (isOpen) {
       setForm({ accountNumber: '', bankCode: '' });
-      setShouldResolve(false);
       setOtpDelivery(null);
       setOtp('');
     }
@@ -60,7 +74,10 @@ export const AddBankAccountModal = ({
       if (!otpDelivery) {
         const bank = banks.find((item) => item.code === form.bankCode);
         if (!valid || !confirmed || !bank) return;
-        const response = await requestOtp({ accountNumber: form.accountNumber, bankName: bank.name });
+        const response = await requestOtp({
+          accountNumber: form.accountNumber,
+          bankName: bank.name,
+        });
         setOtpDelivery(response.data);
         return;
       }
@@ -74,12 +91,18 @@ export const AddBankAccountModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add Bank Account Details" size="md">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Add Bank Account Details"
+      size="md"
+    >
       <form onSubmit={submit} className="space-y-5" autoComplete="off">
         {otpDelivery ? (
           <>
             <p className="text-sm text-muted-foreground">
-              Enter the 6-digit code sent to {otpDelivery.email}. It expires in {otpDelivery.expiresInMinutes} minutes.
+              Enter the 6-digit code sent to {otpDelivery.email}. It expires in{' '}
+              {otpDelivery.expiresInMinutes} minutes.
             </p>
             <Field label="Verification Code">
               <input
@@ -89,7 +112,9 @@ export const AddBankAccountModal = ({
                 autoComplete="one-time-code"
                 maxLength={6}
                 value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(e) =>
+                  setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
+                }
                 required
                 autoFocus
               />
@@ -97,63 +122,91 @@ export const AddBankAccountModal = ({
           </>
         ) : (
           <>
-        <Field label="Account Number">
-          <input
-            className={inputCls}
-            placeholder="Enter account no"
-            inputMode="numeric"
-            maxLength={10}
-            value={form.accountNumber}
-            onChange={(e) => {
-              setForm({ ...form, accountNumber: e.target.value.replace(/\D/g, '') });
-              setShouldResolve(false);
-            }}
-          />
-          {form.accountNumber && form.accountNumber.length !== 10 && (
-            <span className="text-xs text-destructive mt-1 block">Account number must be 10 digits</span>
-          )}
-        </Field>
-        <Field label="Bank">
-          <select
-            className={inputCls}
-            value={form.bankCode}
-            onChange={(e) => {
-              setForm({ ...form, bankCode: e.target.value });
-              setShouldResolve(false);
-            }}
-            disabled={banksLoading}
-          >
-            <option value="">{banksLoading ? 'Loading banks...' : 'Select bank'}</option>
-            {banks.map((bank) => (
-              <option key={bank.code} value={bank.code}>{bank.name}</option>
-            ))}
-          </select>
-        </Field>
-        {banksError && <p className="text-sm text-destructive">Could not load banks.</p>}
-        <button
-          type="button"
-          disabled={!valid || resolving}
-          onClick={() => setShouldResolve(true)}
-          className="px-4 py-2 rounded-lg border border-border text-sm disabled:opacity-50"
-        >
-          {resolving ? 'Verifying...' : 'Verify account'}
-        </button>
-        {resolveError && shouldResolve && (
-          <p className="text-sm text-destructive">Could not verify this account.</p>
-        )}
-        {confirmed && (
-          <p className="text-sm text-foreground">Account name: {resolvedAccount.accountName}</p>
-        )}
+            <Field label="Account Number">
+              <input
+                className={inputCls}
+                placeholder="Enter account no"
+                inputMode="numeric"
+                maxLength={10}
+                value={form.accountNumber}
+                onChange={(e) => {
+                  setForm({
+                    ...form,
+                    accountNumber: e.target.value.replace(/\D/g, ''),
+                  });
+                }}
+              />
+              {form.accountNumber && form.accountNumber.length !== 10 && (
+                <span className="text-xs text-destructive mt-1 block">
+                  Account number must be 10 digits
+                </span>
+              )}
+            </Field>
+            <Field label="Bank">
+              <Select
+                className={inputCls}
+                value={form.bankCode}
+                onChange={(e) => {
+                  setForm({ ...form, bankCode: e.target.value });
+                }}
+                disabled={banksLoading}
+              >
+                <option value="">
+                  {banksLoading ? 'Loading banks...' : 'Select bank'}
+                </option>
+                {banks.map((bank) => (
+                  <option key={bank.code} value={bank.code}>
+                    {bank.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {banksError && (
+              <p className="text-sm text-destructive">Could not load banks.</p>
+            )}
+            {resolving && (
+              <p role="status" className="text-sm text-muted-foreground">
+                Verifying account...
+              </p>
+            )}
+            {resolveError && shouldResolve && (
+              <div role="alert" className="text-sm text-danger">
+                Could not verify this account. Check the details or{' '}
+                <button
+                  type="button"
+                  onClick={() => void retryResolution()}
+                  className="font-medium underline"
+                >
+                  try again
+                </button>
+                .
+              </div>
+            )}
+            {confirmed && (
+              <p className="text-sm text-foreground">
+                Account name: {resolvedAccount.accountName}
+              </p>
+            )}
           </>
         )}
         <div className="flex justify-end pt-4">
           <button
             type="submit"
-            disabled={isLoading || requestingOtp || (otpDelivery ? !/^\d{6}$/.test(otp) : !valid || !confirmed)}
+            disabled={
+              isLoading ||
+              requestingOtp ||
+              (otpDelivery ? !/^\d{6}$/.test(otp) : !valid || !confirmed)
+            }
             className="px-8 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50"
             style={{ backgroundColor: '#f30100' }}
           >
-            {requestingOtp ? 'Sending code...' : isLoading ? 'Saving...' : otpDelivery ? 'Verify & Save' : 'Next'}
+            {requestingOtp
+              ? 'Sending code...'
+              : isLoading
+                ? 'Saving...'
+                : otpDelivery
+                  ? 'Verify & Save'
+                  : 'Next'}
           </button>
         </div>
       </form>
@@ -175,18 +228,33 @@ export const ReceivingAccountPicker = ({
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-border bg-card divide-y divide-border">
-        {isLoading && <p className="p-4 text-sm text-muted-foreground">Loading accounts...</p>}
-        {isError && <p className="p-4 text-sm text-destructive">Couldn't load receiving accounts.</p>}
+        {isLoading && (
+          <p className="p-4 text-sm text-muted-foreground">
+            <LoadingState label="Loading accounts..." />
+          </p>
+        )}
+        {isError && (
+          <p className="p-4 text-sm text-destructive">
+            Couldn't load receiving accounts.
+          </p>
+        )}
         {!isLoading && !isError && accounts.length === 0 && (
-          <p className="p-4 text-sm text-muted-foreground">No receiving account yet. Add one below.</p>
+          <p className="p-4 text-sm text-muted-foreground">
+            No receiving account yet. Add one below.
+          </p>
         )}
         {accounts.map((a) => (
-          <label key={a.id} className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/50">
+          <label
+            key={a.id}
+            className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/50"
+          >
             <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
               <Landmark className="w-5 h-5 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{a.accountName}</p>
+              <p className="text-sm font-medium text-foreground truncate">
+                {a.accountName}
+              </p>
               <p className="text-xs text-muted-foreground truncate">
                 {a.accountNumber}, {a.bankName} · {a.gateway}
               </p>
@@ -222,7 +290,13 @@ export const ReceivingAccountPicker = ({
 };
 
 /** Standalone popup to view/add receiving accounts from the Invoices page. */
-export const ReceivingAccountsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => (
+export const ReceivingAccountsModal = ({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) => (
   <Modal isOpen={isOpen} onClose={onClose} title="Receiving Accounts" size="md">
     <ReceivingAccountPicker />
   </Modal>
