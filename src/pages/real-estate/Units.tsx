@@ -1,3 +1,6 @@
+import LoadingState from '@/components/ui/LoadingState';
+import Select from '@/components/ui/Select';
+import { confirmAction } from '@/lib/dialog';
 
 import { useState, useEffect } from 'react';
 import { Search, FileSpreadsheet, FileText, ChevronDown, Edit, Trash2, Eye } from 'lucide-react';
@@ -15,7 +18,7 @@ const DeleteUnitAction = ({ id, onClose }: { id: string; onClose: () => void }) 
   const { deleteUnit, isLoading } = useDeleteUnit(id);
   return (
     <RowAction danger disabled={isLoading} onClick={async () => {
-      if (!window.confirm('Delete this unit?')) return;
+      if (!(await confirmAction('Delete this unit?'))) return;
       try { await deleteUnit(); } finally { onClose(); }
     }}>
       <Trash2 className="w-4 h-4" />
@@ -246,7 +249,7 @@ const Units = () => {
                     className="text-center py-10 text-muted-foreground"
                   >
                     {isLoading
-                      ? "Loading units..."
+                      ? <LoadingState label="Loading units..." />
                       : isError
                       ? "Couldn't load units."
                       : "No units found."}
@@ -325,7 +328,7 @@ const Units = () => {
           >
             Show
           </span>
-          <select
+          <Select
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));
@@ -341,7 +344,7 @@ const Units = () => {
             <option value={10}>10</option>
             <option value={25}>25</option>
             <option value={50}>50</option>
-          </select>
+          </Select>
           <span
             className="text-sm text-muted-foreground"
             style={{ fontFamily: "Poppins" }}

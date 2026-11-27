@@ -1,3 +1,5 @@
+import LoadingState from '@/components/ui/LoadingState';
+import Select from '@/components/ui/Select';
 import { useState } from 'react';
 import {
   FileSpreadsheet,
@@ -78,11 +80,13 @@ function EditInvoice({ id, onClose, onSaved }: EditInvoiceProps) {
       role="status"
     >
       <span>
-        {isLoading
-          ? 'Loading invoice for editing…'
-          : isError
-          ? error?.message
-          : 'Invoice unavailable.'}
+        {isLoading ? (
+          <LoadingState label="Loading invoice for editing…" />
+        ) : isError ? (
+          error?.message
+        ) : (
+          'Invoice unavailable.'
+        )}
       </span>
       {isError && (
         <Button variant="outline" onClick={() => refetch()}>
@@ -118,7 +122,12 @@ const Invoices = () => {
   const [pageSize, setPageSize] = useState(10);
 
   // Queries
-  const query = useGetInvoices(currentPage, pageSize, typeFilter, propertyFilter);
+  const query = useGetInvoices(
+    currentPage,
+    pageSize,
+    typeFilter,
+    propertyFilter
+  );
   const { properties } = useGetPropertyOptions();
   const {
     data: invoiceTypesData,
@@ -197,7 +206,9 @@ const Invoices = () => {
 
   const toggleColumnVisibility = (column: string) => {
     setVisibleColumns((prev) =>
-      prev.includes(column) ? prev.filter((col) => col !== column) : [...prev, column]
+      prev.includes(column)
+        ? prev.filter((col) => col !== column)
+        : [...prev, column]
     );
   };
 
@@ -209,12 +220,6 @@ const Invoices = () => {
 
   return (
     <div className="space-y-4 min-w-0">
-      {/* Breadcrumb Navigation */}
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-muted-foreground">Finance /</span>
-        <span className="text-brand-text font-medium">Invoices</span>
-      </div>
-
       {/* Header Actions */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base font-medium">Invoice List</h2>
@@ -344,7 +349,7 @@ const Invoices = () => {
           <div className="flex flex-wrap items-end gap-3 border-y border-border py-4">
             <label className="text-sm space-y-1">
               <span className="block font-medium">Property</span>
-              <select
+              <Select
                 className="border border-border rounded-lg bg-card p-2 max-w-60 focus:outline-none"
                 value={propertyFilter}
                 onChange={(e) => {
@@ -358,12 +363,12 @@ const Invoices = () => {
                     {prop.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
 
             <label className="text-sm space-y-1">
               <span className="block font-medium">Invoice Type</span>
-              <select
+              <Select
                 className="border border-border rounded-lg bg-card p-2 focus:outline-none"
                 value={typeFilter}
                 onChange={(e) => {
@@ -372,20 +377,29 @@ const Invoices = () => {
                 }}
               >
                 <option value="">All types</option>
-                {loadingInvoiceTypes && <option disabled>Loading invoice types...</option>}
-                {invoiceTypesError && <option disabled>Could not load invoice types</option>}
-                {!loadingInvoiceTypes && !invoiceTypesError && invoiceTypes.length === 0 && (
-                  <option disabled>No invoice types available</option>
+                {loadingInvoiceTypes && (
+                  <option disabled>Loading invoice types...</option>
                 )}
+                {invoiceTypesError && (
+                  <option disabled>Could not load invoice types</option>
+                )}
+                {!loadingInvoiceTypes &&
+                  !invoiceTypesError &&
+                  invoiceTypes.length === 0 && (
+                    <option disabled>No invoice types available</option>
+                  )}
                 {invoiceTypes.map((type) => (
                   <option key={type.id} value={type.value}>
                     {type.label}
                   </option>
                 ))}
-                {typeFilter && !invoiceTypes.some((type) => type.value === typeFilter) && (
-                  <option value={typeFilter}>{invoiceLabel(typeFilter)}</option>
-                )}
-              </select>
+                {typeFilter &&
+                  !invoiceTypes.some((type) => type.value === typeFilter) && (
+                    <option value={typeFilter}>
+                      {invoiceLabel(typeFilter)}
+                    </option>
+                  )}
+              </Select>
             </label>
 
             <Button variant="outline" onClick={handleResetFilters}>
@@ -398,9 +412,11 @@ const Invoices = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              {COLUMNS.filter((col) => visibleColumns.includes(col)).map((col) => (
-                <TableHead key={col}>{col}</TableHead>
-              ))}
+              {COLUMNS.filter((col) => visibleColumns.includes(col)).map(
+                (col) => (
+                  <TableHead key={col}>{col}</TableHead>
+                )
+              )}
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -409,7 +425,7 @@ const Invoices = () => {
             {query.isLoading ? (
               <TableRow>
                 <TableCell colSpan={visibleColumns.length + 1}>
-                  Loading invoices…
+                  <LoadingState label="Loading invoices…" />
                 </TableCell>
               </TableRow>
             ) : query.isError ? (
@@ -508,7 +524,7 @@ const Invoices = () => {
       <div className="flex flex-wrap justify-between items-center gap-3 text-sm">
         <div className="flex flex-wrap gap-2 items-center">
           <span className="text-muted-foreground">Show</span>
-          <select
+          <Select
             aria-label="Entries per page"
             className="border border-border rounded-lg bg-card p-1"
             value={pageSize}
@@ -522,7 +538,7 @@ const Invoices = () => {
                 {num}
               </option>
             ))}
-          </select>
+          </Select>
           <span className="text-muted-foreground">
             entries per page · {query.meta?.totalItems ?? 0} total
           </span>
@@ -575,9 +591,7 @@ const Invoices = () => {
         />
       )}
 
-      {viewId && (
-        <InvoiceDetails id={viewId} onClose={() => setViewId(null)} />
-      )}
+      {viewId && <InvoiceDetails id={viewId} onClose={() => setViewId(null)} />}
 
       {deleting && (
         <DeleteModal

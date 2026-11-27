@@ -1,6 +1,5 @@
-
-import useApiManager from "../useApiManager";
-import useGetApiManager from "../useGetApiManager";
+import useApiManager from '../useApiManager';
+import useGetApiManager from '../useGetApiManager';
 
 export interface EstateRule {
   id?: string;
@@ -21,17 +20,12 @@ export interface EstateRulesResponse {
   data: EstateRule[];
 }
 
-const QUERY_KEY = "get_estate_rules";
+const QUERY_KEY = 'get_estate_rules';
 
-const estateCode = () =>
-  localStorage.getItem("est_code")?.trim() ?? "";
+const estateCode = () => localStorage.getItem('est_code')?.trim() ?? '';
 
-const isRecord = (
-  value: unknown
-): value is Record<string, unknown> =>
-  typeof value === "object" &&
-  value !== null &&
-  !Array.isArray(value);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
  * Normalize estate rules API response.
@@ -43,9 +37,9 @@ export function parseEstateRulesResponse(
 
   if (envelope.success === false) {
     throw new Error(
-      typeof envelope.message === "string"
+      typeof envelope.message === 'string'
         ? envelope.message
-        : "Could not load estate rules"
+        : 'Could not load estate rules'
     );
   }
 
@@ -57,27 +51,21 @@ export function parseEstateRulesResponse(
     candidate = rawData;
   } else if (isRecord(rawData)) {
     // Check nested collections before treating data as a rule.
-    candidate = [
-      rawData.rules,
-      rawData.items,
-      rawData.data,
-      rawData.rule,
-    ].find(
+    candidate = [rawData.rules, rawData.items, rawData.data, rawData.rule].find(
       (value) => Array.isArray(value) || isRecord(value)
     );
 
     // Support APIs returning one rule directly.
-    if (!candidate && (
-      "id" in rawData ||
-      "documentUrl" in rawData ||
-      "file" in rawData
-    )) {
+    if (
+      !candidate &&
+      ('id' in rawData || 'documentUrl' in rawData || 'file' in rawData)
+    ) {
       candidate = rawData;
     }
   }
 
   const data = Array.isArray(candidate)
-    ? candidate.filter(isRecord) as EstateRule[]
+    ? (candidate.filter(isRecord) as EstateRule[])
     : isRecord(candidate)
       ? [candidate as EstateRule]
       : [];
@@ -85,9 +73,7 @@ export function parseEstateRulesResponse(
   return {
     success: true,
     message:
-      typeof envelope.message === "string"
-        ? envelope.message
-        : undefined,
+      typeof envelope.message === 'string' ? envelope.message : undefined,
     data,
   };
 }
@@ -95,9 +81,7 @@ export function parseEstateRulesResponse(
 /**
  * Get the estate rule document URL.
  */
-export function estateRuleUrl(
-  rule?: EstateRule
-): string | undefined {
+export function estateRuleUrl(rule?: EstateRule): string | undefined {
   if (!rule) return undefined;
 
   return [
@@ -107,8 +91,7 @@ export function estateRuleUrl(
     rule.document,
     rule.url,
   ].find(
-    (value): value is string =>
-      typeof value === "string" && value.length > 0
+    (value): value is string => typeof value === 'string' && value.length > 0
   );
 }
 
@@ -119,12 +102,16 @@ export const useGetEstateRules = () => {
   const code = estateCode();
 
   return useGetApiManager<EstateRulesResponse>({
-    endpoint: "estate-rules",
+    endpoint: 'estate-rules',
     queryKey: [QUERY_KEY, code],
     isAuth: true,
     isCode: true,
     enabled: Boolean(code),
     select: parseEstateRulesResponse,
+    notFoundFallback: {
+      message: 'Estate rules PDF not found.',
+      value: { success: true, data: [] },
+    },
   });
 };
 
@@ -134,8 +121,8 @@ export const useGetEstateRules = () => {
  */
 export const useUploadEstateRules = () => {
   const api = useApiManager({
-    endpoint: "estate-rules",
-    method: "POST",
+    endpoint: 'estate-rules',
+    method: 'POST',
     queryKey: [QUERY_KEY, estateCode()],
     isAuth: true,
     isCode: true,
@@ -143,24 +130,22 @@ export const useUploadEstateRules = () => {
 
   const uploadEstateRules = async (file: File) => {
     if (!estateCode()) {
-      throw new Error("Estate code is missing");
+      throw new Error('Estate code is missing');
     }
 
-    if (file.type !== "application/pdf") {
-      throw new Error("Please select a PDF document");
+    if (file.type !== 'application/pdf') {
+      throw new Error('Please select a PDF document');
     }
 
     const form = new FormData();
 
     // Important: API expects documentUrl, not file.
-    form.append("documentUrl", file);
+    form.append('documentUrl', file);
 
     const result = await api.callApi(form);
 
     if (result.success === false) {
-      throw new Error(
-        result.message || "Could not upload estate rules"
-      );
+      throw new Error(result.message || 'Could not upload estate rules');
     }
 
     return result;

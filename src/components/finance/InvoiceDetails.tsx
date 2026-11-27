@@ -1,3 +1,4 @@
+import LoadingState from '@/components/ui/LoadingState';
 
 import { useState } from 'react';
 import { Landmark, Send } from 'lucide-react';
@@ -26,11 +27,11 @@ import {
   invoiceMoney,
 } from '@/lib/invoices';
 
-
 export function InvoiceSummary({ invoice }: { invoice: Invoice }) {
   const { data: invoiceTypesData } = useGetInvoiceTypes();
-  const typeLabel = extractTypes(invoiceTypesData)
-    .find((type) => type.id === invoice.typeId)?.label || invoiceLabel(invoice.type);
+  const typeLabel =
+    extractTypes(invoiceTypesData).find((type) => type.id === invoice.typeId)
+      ?.label || invoiceLabel(invoice.type);
   return (
     <div className="space-y-7">
       <div className="flex justify-between gap-4 flex-wrap">
@@ -48,9 +49,7 @@ export function InvoiceSummary({ invoice }: { invoice: Invoice }) {
 
         <dl className="text-sm space-y-2 text-right">
           <div>
-            <dt className="inline text-muted-foreground mr-3">
-              Invoice Month
-            </dt>
+            <dt className="inline text-muted-foreground mr-3">Invoice Month</dt>
 
             <dd className="inline">
               {invoiceDate(invoice.invoiceMonth, true)}
@@ -58,19 +57,13 @@ export function InvoiceSummary({ invoice }: { invoice: Invoice }) {
           </div>
 
           <div>
-            <dt className="inline text-muted-foreground mr-3">
-              Due Date
-            </dt>
+            <dt className="inline text-muted-foreground mr-3">Due Date</dt>
 
-            <dd className="inline">
-              {invoiceDate(invoice.dueDate)}
-            </dd>
+            <dd className="inline">{invoiceDate(invoice.dueDate)}</dd>
           </div>
 
           <div>
-            <dt className="inline text-muted-foreground mr-3">
-              Status
-            </dt>
+            <dt className="inline text-muted-foreground mr-3">Status</dt>
 
             <dd className="inline text-brand-text">
               {invoiceLabel(invoice.status)}
@@ -81,9 +74,7 @@ export function InvoiceSummary({ invoice }: { invoice: Invoice }) {
 
       <div className="grid grid-cols-2 border border-border rounded-lg divide-x divide-border">
         <div className="p-4 space-y-2 min-w-0">
-          <p className="text-xs text-muted-foreground">
-            From
-          </p>
+          <p className="text-xs text-muted-foreground">From</p>
 
           <p className="text-sm font-medium break-words">
             {invoice.receivingAccount?.accountName || '—'}
@@ -95,20 +86,18 @@ export function InvoiceSummary({ invoice }: { invoice: Invoice }) {
         </div>
 
         <div className="p-4 space-y-2 min-w-0">
-          <p className="text-xs text-muted-foreground">
-            Recipients
-          </p>
+          <p className="text-xs text-muted-foreground">Recipients</p>
 
           <p className="text-sm break-words">
             {invoice.propertyScope === 'ENTIRE_ESTATE'
               ? 'Entire Estate'
-              : invoice.properties.map(p => p.name).join(', ') || '—'}
+              : invoice.properties.map((p) => p.name).join(', ') || '—'}
           </p>
 
           <p className="text-sm text-muted-foreground break-words">
             {invoice.unitScope === 'ALL_UNITS'
               ? 'All property units'
-              : invoice.units.map(u => u.name).join(', ') || '—'}
+              : invoice.units.map((u) => u.name).join(', ') || '—'}
           </p>
         </div>
       </div>
@@ -116,40 +105,28 @@ export function InvoiceSummary({ invoice }: { invoice: Invoice }) {
       <Table>
         <TableHeader>
           <TableRow>
-            {['Type', 'Frequency', 'Amount', 'Payment Type'].map(label => (
-              <TableHead key={label}>
-                {label}
-              </TableHead>
+            {['Type', 'Frequency', 'Amount', 'Payment Type'].map((label) => (
+              <TableHead key={label}>{label}</TableHead>
             ))}
           </TableRow>
         </TableHeader>
 
         <TableBody>
           <TableRow>
-            <TableCell>
-              {typeLabel}
-            </TableCell>
+            <TableCell>{typeLabel}</TableCell>
 
-            <TableCell>
-              {invoiceLabel(invoice.frequency)}
-            </TableCell>
+            <TableCell>{invoiceLabel(invoice.frequency)}</TableCell>
 
-            <TableCell>
-              {invoiceMoney(invoice.amount)}
-            </TableCell>
+            <TableCell>{invoiceMoney(invoice.amount)}</TableCell>
 
-            <TableCell>
-              {invoiceLabel(invoice.payment)}
-            </TableCell>
+            <TableCell>{invoiceLabel(invoice.payment)}</TableCell>
           </TableRow>
         </TableBody>
       </Table>
 
       {invoice.description && (
         <div>
-          <p className="text-xs text-muted-foreground mb-2">
-            Description
-          </p>
+          <p className="text-xs text-muted-foreground mb-2">Description</p>
 
           <p className="text-sm whitespace-pre-wrap break-words">
             {invoice.description}
@@ -158,19 +135,13 @@ export function InvoiceSummary({ invoice }: { invoice: Invoice }) {
       )}
 
       <div className="flex justify-between text-sm px-4">
-        <span className="text-muted-foreground">
-          Invoice Amount
-        </span>
+        <span className="text-muted-foreground">Invoice Amount</span>
 
-        <strong>
-          {invoiceMoney(invoice.amount)}
-        </strong>
+        <strong>{invoiceMoney(invoice.amount)}</strong>
       </div>
 
       <div className="rounded-lg border border-border p-4">
-        <p className="text-sm font-medium mb-3">
-          Receiving Account
-        </p>
+        <p className="text-sm font-medium mb-3">Receiving Account</p>
 
         <div className="flex gap-3 items-center">
           <Landmark className="w-5 h-5 text-brand-text shrink-0" />
@@ -190,7 +161,6 @@ export function InvoiceSummary({ invoice }: { invoice: Invoice }) {
     </div>
   );
 }
-
 
 export default function InvoiceDetails({
   id,
@@ -218,20 +188,15 @@ export default function InvoiceDetails({
       <div className="p-6 flex-1 overflow-y-auto min-h-0">
         {isLoading && (
           <p className="text-sm text-muted-foreground">
-            Loading invoice…
+            <LoadingState label="Loading invoice…" />
           </p>
         )}
 
         {isError && (
           <div className="space-y-3">
-            <p className="text-danger text-sm">
-              {error?.message}
-            </p>
+            <p className="text-danger text-sm">{error?.message}</p>
 
-            <Button
-              variant="outline"
-              onClick={() => refetch()}
-            >
+            <Button variant="outline" onClick={() => refetch()}>
               Retry
             </Button>
           </div>
@@ -242,24 +207,20 @@ export default function InvoiceDetails({
             <InvoiceSummary invoice={invoice} />
 
             <section className="mt-7">
-              <h3 className="text-sm font-medium mb-3">
-                Payment History
-              </h3>
+              <h3 className="text-sm font-medium mb-3">Payment History</h3>
 
               {invoice.payments?.length ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {['Reference', 'Date', 'Amount', 'Status'].map(s => (
-                        <TableHead key={s}>
-                          {s}
-                        </TableHead>
+                      {['Reference', 'Date', 'Amount', 'Status'].map((s) => (
+                        <TableHead key={s}>{s}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
 
                   <TableBody>
-                    {invoice.payments.map(p => (
+                    {invoice.payments.map((p) => (
                       <TableRow key={p.id}>
                         <TableCell>
                           <span className="break-all">
@@ -273,14 +234,10 @@ export default function InvoiceDetails({
                             : '—'}
                         </TableCell>
 
-                        <TableCell>
-                          {invoiceMoney(p.amount)}
-                        </TableCell>
+                        <TableCell>{invoiceMoney(p.amount)}</TableCell>
 
                         <TableCell>
-                          {p.status
-                            ? invoiceLabel(p.status)
-                            : '—'}
+                          {p.status ? invoiceLabel(p.status) : '—'}
                         </TableCell>
                       </TableRow>
                     ))}
